@@ -1,127 +1,145 @@
 "use client"
 
 import { useState } from "react"
-import { zodResolver } from "@hookform/resolvers/zod"
-import { useForm } from "react-hook-form"
-import * as z from "zod"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
 import { Input } from "@/components/ui/input"
-import { useToast } from "@/hooks/use-toast"
-
-const formSchema = z.object({
-  name: z.string().min(2, "Name must be at least 2 characters"),
-  email: z.string().email("Please enter a valid email address").optional(),
-})
+import { Label } from "@/components/ui/label"
+import { Switch } from "@/components/ui/switch"
+import { Bell, Mail, Shield, User } from "lucide-react"
 
 export default function SettingsPage() {
-  const [isLoading, setIsLoading] = useState(false)
-  const { toast } = useToast()
-
-  const form = useForm<z.infer<typeof formSchema>>({
-    resolver: zodResolver(formSchema),
-    defaultValues: {
-      name: "John Doe",
-      email: "john.doe@company.com",
-    },
-  })
-
-  async function onSubmit(values: z.infer<typeof formSchema>) {
-    setIsLoading(true)
-
-    try {
-      // In a real implementation, this would call your API
-      // const response = await fetch("/api/user/profile", {
-      //   method: "PUT",
-      //   headers: { "Content-Type": "application/json" },
-      //   body: JSON.stringify({ name: values.name }),
-      // })
-
-      // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 1000))
-
-      toast({
-        title: "Profile updated",
-        description: "Your profile has been updated successfully",
-      })
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "Something went wrong. Please try again.",
-        variant: "destructive",
-      })
-    } finally {
-      setIsLoading(false)
-    }
-  }
+  const [notifications, setNotifications] = useState(true)
+  const [marketingEmails, setMarketingEmails] = useState(false)
 
   return (
     <div className="flex flex-col gap-6">
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight">Settings</h1>
-        <p className="text-muted-foreground">Manage your account settings and preferences</p>
+      <div className="space-y-1">
+        <h1 className="text-2xl font-semibold tracking-tight">Settings</h1>
+        <p className="text-sm text-muted-foreground">Manage your account settings and preferences</p>
       </div>
-      <div className="grid gap-6 md:grid-cols-2">
+
+      <div className="grid gap-6">
+        {/* Profile Settings */}
         <Card>
           <CardHeader>
-            <CardTitle>Profile Information</CardTitle>
-            <CardDescription>Update your account profile information</CardDescription>
-          </CardHeader>
-          <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)}>
-              <CardContent className="space-y-4">
-                <FormField
-                  control={form.control}
-                  name="name"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Name</FormLabel>
-                      <FormControl>
-                        <Input {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="email"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Email</FormLabel>
-                      <FormControl>
-                        <Input {...field} disabled />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </CardContent>
-              <CardFooter>
-                <Button type="submit" disabled={isLoading}>
-                  {isLoading ? "Saving..." : "Save Changes"}
-                </Button>
-              </CardFooter>
-            </form>
-          </Form>
-        </Card>
-        <Card>
-          <CardHeader>
-            <CardTitle>Company Information</CardTitle>
-            <CardDescription>Your company details</CardDescription>
+            <CardTitle>Profile Settings</CardTitle>
+            <CardDescription>Update your personal information</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div>
-              <div className="text-sm font-medium">Company Name</div>
-              <div className="text-muted-foreground">TechCorp Inc.</div>
+            <div className="space-y-2">
+              <Label htmlFor="name">Full Name</Label>
+              <div className="flex gap-2">
+                <Input id="name" placeholder="John Doe" />
+                <Button variant="outline">Update</Button>
+              </div>
             </div>
-            <div>
-              <div className="text-sm font-medium">Role</div>
-              <div className="text-muted-foreground">Employee</div>
+            <div className="space-y-2">
+              <Label htmlFor="email">Email</Label>
+              <div className="flex gap-2">
+                <Input id="email" type="email" placeholder="john@example.com" />
+                <Button variant="outline">Update</Button>
+              </div>
             </div>
           </CardContent>
         </Card>
+
+        {/* Notification Settings */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Notification Preferences</CardTitle>
+            <CardDescription>Manage how you receive updates</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex items-center justify-between">
+              <div className="space-y-0.5">
+                <Label>Push Notifications</Label>
+                <p className="text-sm text-muted-foreground">
+                  Receive instant updates about new offers and coupons
+                </p>
+              </div>
+              <Switch
+                checked={notifications}
+                onCheckedChange={setNotifications}
+              />
+            </div>
+            <div className="flex items-center justify-between">
+              <div className="space-y-0.5">
+                <Label>Marketing Emails</Label>
+                <p className="text-sm text-muted-foreground">
+                  Get updates about new features and promotions
+                </p>
+              </div>
+              <Switch
+                checked={marketingEmails}
+                onCheckedChange={setMarketingEmails}
+              />
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Security Settings */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Security</CardTitle>
+            <CardDescription>Manage your account security</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="current-password">Current Password</Label>
+              <Input id="current-password" type="password" />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="new-password">New Password</Label>
+              <Input id="new-password" type="password" />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="confirm-password">Confirm New Password</Label>
+              <Input id="confirm-password" type="password" />
+            </div>
+            <Button>Update Password</Button>
+          </CardContent>
+        </Card>
+
+        {/* Quick Actions */}
+        <div className="grid gap-4 md:grid-cols-2">
+          <Button variant="outline" className="h-auto py-6">
+            <div className="flex items-center gap-2">
+              <User className="h-4 w-4" />
+              <div className="text-left">
+                <div className="font-medium">Account Details</div>
+                <div className="text-sm text-muted-foreground">View and edit your account information</div>
+              </div>
+            </div>
+          </Button>
+          <Button variant="outline" className="h-auto py-6">
+            <div className="flex items-center gap-2">
+              <Bell className="h-4 w-4" />
+              <div className="text-left">
+                <div className="font-medium">Notification Settings</div>
+                <div className="text-sm text-muted-foreground">Manage your notification preferences</div>
+              </div>
+            </div>
+          </Button>
+          <Button variant="outline" className="h-auto py-6">
+            <div className="flex items-center gap-2">
+              <Mail className="h-4 w-4" />
+              <div className="text-left">
+                <div className="font-medium">Email Preferences</div>
+                <div className="text-sm text-muted-foreground">Control your email subscriptions</div>
+              </div>
+            </div>
+          </Button>
+          <Button variant="outline" className="h-auto py-6">
+            <div className="flex items-center gap-2">
+              <Shield className="h-4 w-4" />
+              <div className="text-left">
+                <div className="font-medium">Privacy Settings</div>
+                <div className="text-sm text-muted-foreground">Manage your privacy and data</div>
+              </div>
+            </div>
+          </Button>
+        </div>
       </div>
     </div>
   )

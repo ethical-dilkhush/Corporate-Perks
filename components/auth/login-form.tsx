@@ -6,15 +6,17 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { useToast } from "@/hooks/use-toast"
-import { useSearchParams } from "next/navigation"
+import { Mail } from "lucide-react"
 
-export function LoginForm() {
+interface LoginFormProps {
+  role: string
+}
+
+export function LoginForm({ role }: LoginFormProps) {
   const [email, setEmail] = useState("")
   const [isLoading, setIsLoading] = useState(false)
   const router = useRouter()
   const { toast } = useToast()
-  const searchParams = useSearchParams()
-  const role = searchParams.get("role") || "employee"
 
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -30,10 +32,8 @@ export function LoginForm() {
         description: "Check your email for the login link.",
       })
 
-      // Store the role in session storage for the OTP verification
-      sessionStorage.setItem("userRole", role)
-      
-      router.push("/auth/verify-otp")
+      // Pass the role as a query parameter
+      router.push(`/auth/verify-otp?role=${role}`)
     } catch (error) {
       toast({
         title: "Error",
@@ -49,18 +49,22 @@ export function LoginForm() {
     <form onSubmit={onSubmit} className="space-y-4">
       <div className="space-y-2">
         <Label htmlFor="email">Email</Label>
-        <Input
-          id="email"
-          placeholder={role === "admin" ? "admin@company.com" : role === "company" ? "company@domain.com" : "name@company.com"}
-          type="email"
-          autoCapitalize="none"
-          autoComplete="email"
-          autoCorrect="off"
-          disabled={isLoading}
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          required
-        />
+        <div className="relative">
+          <Mail className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+          <Input
+            id="email"
+            type="email"
+            placeholder={role === "admin" ? "admin@company.com" : role === "company" ? "company@domain.com" : "name@company.com"}
+            className="pl-8"
+            autoCapitalize="none"
+            autoComplete="email"
+            autoCorrect="off"
+            disabled={isLoading}
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            required
+          />
+        </div>
       </div>
       <Button type="submit" className="w-full" disabled={isLoading}>
         {isLoading ? "Sending..." : "Sign In with Email"}

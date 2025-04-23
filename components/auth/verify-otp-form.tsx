@@ -6,12 +6,15 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { useToast } from "@/hooks/use-toast"
+import { useSearchParams } from "next/navigation"
 
 export function VerifyOtpForm() {
   const [otp, setOtp] = useState("")
   const [isLoading, setIsLoading] = useState(false)
   const router = useRouter()
   const { toast } = useToast()
+  const searchParams = useSearchParams()
+  const role = searchParams.get("role") || "employee"
 
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -21,29 +24,19 @@ export function VerifyOtpForm() {
       // In a real app, this would be an API call to verify the OTP
       // await fetch("/api/auth/verify", { method: "POST", body: JSON.stringify({ otp }) })
 
-      // Get the user role from session storage
-      const role = sessionStorage.getItem("userRole") || "employee"
-
-      // Clear the role from session storage
-      sessionStorage.removeItem("userRole")
-
       // Show success message
       toast({
         title: "Success",
         description: "You have been successfully logged in.",
       })
 
-      // Redirect based on role
-      switch (role) {
-        case "admin":
-          router.push("/admin/dashboard")
-          break
-        case "company":
-          router.push("/company/dashboard")
-          break
-        default:
-          router.push("/dashboard")
-          break
+      // Redirect based on role from URL
+      if (role === "company") {
+        router.push("/company/dashboard")
+      } else if (role === "admin") {
+        router.push("/admin/dashboard")
+      } else {
+        router.push("/dashboard")
       }
     } catch (error) {
       toast({
@@ -62,15 +55,11 @@ export function VerifyOtpForm() {
         <Label htmlFor="otp">Verification Code</Label>
         <Input
           id="otp"
-          placeholder="123456"
-          type="text"
-          inputMode="numeric"
-          pattern="[0-9]*"
-          maxLength={6}
-          autoComplete="one-time-code"
-          disabled={isLoading}
+          placeholder="Enter 6-digit code"
           value={otp}
           onChange={(e) => setOtp(e.target.value)}
+          maxLength={6}
+          disabled={isLoading}
           required
         />
       </div>
