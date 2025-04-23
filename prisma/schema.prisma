@@ -1,0 +1,104 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+enum Role {
+  ADMIN
+  COMPANY
+  EMPLOYEE
+}
+
+enum CompanyStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum CouponStatus {
+  ACTIVE
+  USED
+  EXPIRED
+}
+
+model User {
+  id            String    @id @default(uuid())
+  email         String    @unique
+  name          String?
+  role          Role      @default(EMPLOYEE)
+  companyId     String?
+  company       Company?  @relation(fields: [companyId], references: [id])
+  emailVerified DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  coupons       Coupon[]
+}
+
+model Company {
+  id          String        @id @default(uuid())
+  name        String
+  description String?
+  website     String?
+  status      CompanyStatus @default(PENDING)
+  users       User[]
+  offers      Offer[]
+  eligibleFor EligibleCompany[] @relation("eligible")
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+}
+
+model Offer {
+  id              String    @id @default(uuid())
+  title           String
+  description     String
+  discountValue   Int
+  validFrom       DateTime
+  validUntil      DateTime
+  companyId       String
+  company         Company   @relation(fields: [companyId], references: [id])
+  eligibleCompanies EligibleCompany[]
+  coupons         Coupon[]
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+}
+
+model EligibleCompany {
+  id        String   @id @default(uuid())
+  companyId String
+  offerId   String
+  company   Company  @relation("eligible", fields: [companyId], references: [id])
+  offer     Offer    @relation(fields: [offerId], references: [id])
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([companyId, offerId])
+}
+
+model Coupon {
+  id         String       @id @default(uuid())
+  code       String       @unique
+  userId     String
+  user       User         @relation(fields: [userId], references: [id])
+  offerId    String
+  offer      Offer        @relation(fields: [offerId], references: [id])
+  status     CouponStatus @default(ACTIVE)
+  redeemedAt DateTime?
+  createdAt  DateTime     @default(now())
+  updatedAt  DateTime     @updatedAt
+}
+
+model OtpVerification {
+  id        String   @id @default(uuid())
+  email     String
+  otpCode   String
+  expiresAt DateTime
+  verified  Boolean  @default(false)
+  createdAt DateTime @default(now())
+}
