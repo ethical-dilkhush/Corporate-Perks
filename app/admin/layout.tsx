@@ -26,13 +26,6 @@ export default function AdminLayout({
         </aside>
         <main className="flex w-full flex-1 flex-col overflow-hidden py-6">{children}</main>
       </div>
-      <footer className="border-t py-6">
-        <div className="container flex flex-col items-center justify-between gap-4 md:flex-row">
-          <p className="text-center text-sm text-muted-foreground md:text-left">
-            &copy; {new Date().getFullYear()} Corporate Perks Platform. All rights reserved.
-          </p>
-        </div>
-      </footer>
     </div>
   )
 }

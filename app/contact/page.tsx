@@ -29,21 +29,20 @@ export default function ContactPage() {
   }
 
   return (
-    <div className="relative">
+    <div className="relative overflow-hidden">
+      {/* Background Color */}
+      <div className="absolute inset-0 -z-10">
+        <div className="absolute inset-0 bg-gradient-to-br from-primary/10 via-background to-background" />
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(255,255,255,0.05),transparent)]" />
+        <div className="absolute inset-0 bg-[url('/grid.svg')] bg-center [mask-image:linear-gradient(180deg,white,rgba(255,255,255,0))]" />
+      </div>
+
       {/* Hero Section */}
       <div className="relative h-[400px] w-full">
-        <Image
-          src="/contact-hero.jpg"
-          alt="Contact Us"
-          fill
-          className="object-cover brightness-50"
-          priority
-        />
-        <div className="absolute inset-0 bg-gradient-to-b from-black/50 to-transparent" />
         <div className="absolute inset-0 flex items-center justify-center">
-          <div className="text-center text-white max-w-3xl px-4">
+          <div className="text-center max-w-3xl px-4">
             <h1 className="text-5xl font-bold tracking-tight mb-4">Get in Touch</h1>
-            <p className="text-xl text-gray-200">
+            <p className="text-xl text-muted-foreground">
               We're here to help and answer any questions you might have. We look forward to hearing from you.
             </p>
           </div>
@@ -51,7 +50,7 @@ export default function ContactPage() {
       </div>
 
       {/* Main Content */}
-      <div className="container mx-auto px-4 py-12 -mt-20 relative z-10">
+      <div className="container mx-auto px-4 py-12 -mt-20">
         <div className="grid gap-8 md:grid-cols-2">
           <Card className="bg-white/95 backdrop-blur-sm">
             <CardHeader>
@@ -126,7 +125,7 @@ export default function ContactPage() {
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="flex items-start space-x-4 p-4 bg-gray-50 rounded-lg">
-                  <Mail className="h-6 w-6 text-primary mt-1" />
+                  <Mail className="h-6 w-6 text-primary mt-1 dark:drop-shadow-[0_0_8px_rgba(255,255,255,0.5)]" />
                   <div>
                     <h3 className="font-medium">Email</h3>
                     <p className="text-muted-foreground">support@corporateperks.com</p>
@@ -134,7 +133,7 @@ export default function ContactPage() {
                   </div>
                 </div>
                 <div className="flex items-start space-x-4 p-4 bg-gray-50 rounded-lg">
-                  <Phone className="h-6 w-6 text-primary mt-1" />
+                  <Phone className="h-6 w-6 text-primary mt-1 dark:drop-shadow-[0_0_8px_rgba(255,255,255,0.5)]" />
                   <div>
                     <h3 className="font-medium">Phone</h3>
                     <p className="text-muted-foreground">+1 (555) 123-4567</p>
@@ -142,7 +141,7 @@ export default function ContactPage() {
                   </div>
                 </div>
                 <div className="flex items-start space-x-4 p-4 bg-gray-50 rounded-lg">
-                  <MapPin className="h-6 w-6 text-primary mt-1" />
+                  <MapPin className="h-6 w-6 text-primary mt-1 dark:drop-shadow-[0_0_8px_rgba(255,255,255,0.5)]" />
                   <div>
                     <h3 className="font-medium">Address</h3>
                     <p className="text-muted-foreground">
@@ -155,7 +154,7 @@ export default function ContactPage() {
                   </div>
                 </div>
                 <div className="flex items-start space-x-4 p-4 bg-gray-50 rounded-lg">
-                  <Clock className="h-6 w-6 text-primary mt-1" />
+                  <Clock className="h-6 w-6 text-primary mt-1 dark:drop-shadow-[0_0_8px_rgba(255,255,255,0.5)]" />
                   <div>
                     <h3 className="font-medium">Business Hours</h3>
                     <p className="text-muted-foreground">
@@ -200,7 +199,7 @@ export default function ContactPage() {
         </div>
       </div>
 
-      {/* CTA Section */}
+      {/* CTA Section (outside the background) */}
       <div className="bg-primary/5 py-16">
         <div className="container mx-auto px-4 text-center">
           <h2 className="text-3xl font-bold mb-4">Ready to Get Started?</h2>

@@ -51,7 +51,7 @@ export function HeroSection() {
               transition={{ duration: 0.8 }}
               className="space-y-4"
             >
-              <h1 className="text-4xl font-bold tracking-tighter sm:text-5xl xl:text-6xl/none">
+              <h1 className="text-4xl font-bold tracking-tighter sm:text-5xl xl:text-6xl/none text-black">
                 Exclusive Corporate{" "}
                 <span className="bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">
                   Discounts

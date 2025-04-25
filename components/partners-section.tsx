@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image"
+import { motion } from "framer-motion"
 
 const partners = [
   {
@@ -43,7 +44,41 @@ const partners = [
 
 export function PartnersSection() {
   return (
-    <section className="w-full py-12 md:py-24">
+    <section className="w-full py-12 md:py-24 relative overflow-hidden">
+      {/* Background gradient */}
+      <div className="absolute inset-0 -z-10">
+        <div className="absolute inset-0 bg-gradient-to-b from-primary/5 to-background" />
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(0,0,0,0.05),transparent)]" />
+      </div>
+
+      {/* Animated circles */}
+      <div className="absolute -z-10">
+        <motion.div
+          className="absolute top-1/4 left-1/4 w-64 h-64 rounded-full bg-primary/10 blur-3xl"
+          animate={{
+            scale: [1, 1.2, 1],
+            opacity: [0.5, 0.8, 0.5],
+          }}
+          transition={{
+            duration: 8,
+            repeat: Infinity,
+            ease: "easeInOut",
+          }}
+        />
+        <motion.div
+          className="absolute bottom-1/4 right-1/4 w-64 h-64 rounded-full bg-primary/10 blur-3xl"
+          animate={{
+            scale: [1.2, 1, 1.2],
+            opacity: [0.8, 0.5, 0.8],
+          }}
+          transition={{
+            duration: 8,
+            repeat: Infinity,
+            ease: "easeInOut",
+          }}
+        />
+      </div>
+
       <div className="container mx-auto px-4 md:px-6">
         <div className="flex flex-col items-center justify-center space-y-4 text-center">
           <div className="space-y-2">
@@ -57,9 +92,11 @@ export function PartnersSection() {
         </div>
         <div className="mt-12 grid grid-cols-2 gap-8 sm:grid-cols-3 md:grid-cols-6">
           {partners.map((partner) => (
-            <div
+            <motion.div
               key={partner.name}
               className="group relative flex h-24 items-center justify-center p-4"
+              whileHover={{ scale: 1.05 }}
+              transition={{ duration: 0.2 }}
             >
               <Image
                 src={partner.logo}
@@ -72,7 +109,7 @@ export function PartnersSection() {
                   opacity: 1,
                 }}
               />
-            </div>
+            </motion.div>
           ))}
         </div>
       </div>

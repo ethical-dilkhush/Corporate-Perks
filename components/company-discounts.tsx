@@ -82,7 +82,7 @@ export function CompanyDiscounts() {
                     src={company.logo}
                     alt={company.name}
                     fill
-                    className="object-contain p-2"
+                    className="object-contain p-2 [filter:drop-shadow(0_0_12px_rgba(255,255,255,1))_drop-shadow(0_0_20px_rgba(255,255,255,0.8))_drop-shadow(0_0_30px_rgba(255,255,255,0.6))]"
                     sizes="(max-width: 768px) 100vw, 33vw"
                   />
                 </div>

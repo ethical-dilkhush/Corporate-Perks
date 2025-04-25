@@ -4,61 +4,75 @@ import Image from "next/image"
 export default function AboutPage() {
   return (
     <div className="flex min-h-screen flex-col">
-      {/* Hero Section */}
-      <section className="relative py-20 md:py-32 bg-primary/5">
-        <div className="absolute inset-0 bg-grid-black/[0.05] dark:bg-grid-white/[0.05] bg-[size:20px_20px]" />
-        <div className="container relative mx-auto px-4">
-          <div className="mx-auto max-w-3xl text-center">
-            <h1 className="text-4xl font-bold tracking-tight sm:text-5xl md:text-6xl">
-              About Corporate Perks
-            </h1>
-            <p className="mt-6 text-lg text-muted-foreground md:text-xl">
-              Empowering companies to provide exclusive benefits to their employees through curated partnerships with top vendors.
-            </p>
-          </div>
-        </div>
-      </section>
+      {/* Combined Hero and Mission Section with Continuous Gradient */}
+      <div className="relative overflow-hidden">
+        {/* Main gradient background spanning both sections */}
+        <div className="absolute inset-0 bg-gradient-to-b from-black via-gray-900 via-gray-700 via-gray-500 via-gray-300 to-white" />
+        
+        {/* Subtle radial gradient overlay */}
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_0%,rgba(255,255,255,0.1),transparent_50%)]" />
+        
+        {/* Grid pattern with reduced opacity */}
+        <div className="absolute inset-0 bg-grid-black/[0.05] bg-[size:30px_30px]" />
+        
+        {/* Subtle shine effect */}
+        <div className="absolute inset-0 bg-gradient-to-b from-white/[0.02] to-transparent" />
 
-      {/* Mission Section */}
-      <section className="py-20">
-        <div className="container mx-auto px-4">
-          <div className="grid gap-12 md:grid-cols-2">
-            <div className="space-y-6">
-              <h2 className="text-3xl font-bold">Our Mission</h2>
-              <p className="text-lg text-muted-foreground">
-                At Corporate Perks, we believe that employee satisfaction is the cornerstone of business success. Our mission is to bridge the gap between companies and premium vendors, creating a win-win ecosystem where everyone benefits.
+        {/* Hero Section */}
+        <section className="relative py-20 md:py-32">
+          <div className="container relative mx-auto px-4">
+            <div className="mx-auto max-w-3xl text-center">
+              <h1 className="text-4xl font-bold tracking-tight sm:text-5xl md:text-6xl text-white drop-shadow-lg">
+                About Corporate Perks
+              </h1>
+              <p className="mt-6 text-lg text-white/90 md:text-xl leading-relaxed">
+                Empowering companies to provide exclusive benefits to their employees through curated partnerships with top vendors.
               </p>
-              <div className="grid gap-6 pt-6 sm:grid-cols-2">
-                <div className="rounded-lg border p-6">
-                  <Heart className="h-8 w-8 text-primary mb-4" />
-                  <h3 className="text-xl font-semibold">Employee Happiness</h3>
-                  <p className="mt-2 text-muted-foreground">
-                    Enhancing workplace satisfaction through exclusive benefits
-                  </p>
-                </div>
-                <div className="rounded-lg border p-6">
-                  <Shield className="h-8 w-8 text-primary mb-4" />
-                  <h3 className="text-xl font-semibold">Trusted Partnerships</h3>
-                  <p className="mt-2 text-muted-foreground">
-                    Curated selection of premium vendors and services
-                  </p>
+            </div>
+          </div>
+        </section>
+
+        {/* Mission Section */}
+        <section className="relative py-20">
+          <div className="container relative mx-auto px-4">
+            <div className="grid gap-12 md:grid-cols-2">
+              <div className="space-y-6">
+                <h2 className="text-3xl font-bold text-white">Our Mission</h2>
+                <p className="text-lg text-white/90">
+                  At Corporate Perks, we believe that employee satisfaction is the cornerstone of business success. Our mission is to bridge the gap between companies and premium vendors, creating a win-win ecosystem where everyone benefits.
+                </p>
+                <div className="grid gap-6 pt-6 sm:grid-cols-2">
+                  <div className="rounded-lg border border-white/10 bg-white/5 p-6 backdrop-blur-sm">
+                    <Heart className="h-8 w-8 text-white mb-4" />
+                    <h3 className="text-xl font-semibold text-white">Employee Happiness</h3>
+                    <p className="mt-2 text-black">
+                      Enhancing workplace satisfaction through exclusive benefits
+                    </p>
+                  </div>
+                  <div className="rounded-lg border border-white/10 bg-white/5 p-6 backdrop-blur-sm">
+                    <Shield className="h-8 w-8 text-white mb-4" />
+                    <h3 className="text-xl font-semibold text-white">Trusted Partnerships</h3>
+                    <p className="mt-2 text-black">
+                      Curated selection of premium vendors and services
+                    </p>
+                  </div>
                 </div>
               </div>
-            </div>
-            <div className="relative h-[400px] rounded-lg overflow-hidden">
-              <Image
-                src="/team-meeting.jpg"
-                alt="Professional team meeting in a modern office"
-                fill
-                className="object-cover"
-                priority
-                sizes="(max-width: 768px) 100vw, 50vw"
-                quality={90}
-              />
+              <div className="relative h-[400px] rounded-lg overflow-hidden group">
+                <Image
+                  src="/team-meeting.jpg"
+                  alt="Professional team meeting in a modern office"
+                  fill
+                  className="object-cover transition-transform duration-300 group-hover:scale-110 drop-shadow-[0_0_15px_rgba(255,255,255,0.5)]"
+                  priority
+                  sizes="(max-width: 768px) 100vw, 50vw"
+                  quality={90}
+                />
+              </div>
             </div>
           </div>
-        </div>
-      </section>
+        </section>
+      </div>
 
       {/* Stats Section */}
       <section className="py-20 bg-primary/5">
