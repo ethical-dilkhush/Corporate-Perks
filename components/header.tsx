@@ -16,25 +16,11 @@ export function Header() {
     <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="container flex h-16 items-center">
         <div className="flex flex-1 items-center justify-between">
-          {/* Logo and Main Navigation */}
+          {/* Logo */}
           <div className="flex items-center gap-6">
             <Link href="/" className="flex items-center space-x-2">
               <span className="text-xl font-bold">Corporate Perks</span>
             </Link>
-            <nav className="hidden md:flex items-center space-x-6">
-              <Link href="/dashboard" className="text-sm font-medium transition-colors hover:text-primary">
-                Dashboard
-              </Link>
-              <Link href="/deals" className="text-sm font-medium transition-colors hover:text-primary">
-                Deals
-              </Link>
-              <Link href="/benefits" className="text-sm font-medium transition-colors hover:text-primary">
-                Benefits
-              </Link>
-              <Link href="/rewards" className="text-sm font-medium transition-colors hover:text-primary">
-                Rewards
-              </Link>
-            </nav>
           </div>
 
           {/* Search, Notifications, Theme Toggle, and Profile */}

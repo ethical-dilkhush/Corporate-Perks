@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import { useRouter } from "next/navigation"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Building, Plus, Users, BarChart, Settings, Trash2, Edit2 } from "lucide-react"
@@ -71,7 +72,7 @@ const offers = [
 ]
 
 export default function CompanyDashboardPage() {
-  const [isAddPartnerOpen, setIsAddPartnerOpen] = useState(false)
+  const router = useRouter()
   const [isAddOfferOpen, setIsAddOfferOpen] = useState(false)
 
   return (
@@ -80,33 +81,13 @@ export default function CompanyDashboardPage() {
         <div className="flex items-center justify-between space-y-2">
           <h2 className="text-3xl font-bold tracking-tight">Company Dashboard</h2>
           <div className="flex items-center space-x-2">
-            <Dialog open={isAddPartnerOpen} onOpenChange={setIsAddPartnerOpen}>
-              <DialogTrigger asChild>
-                <Button variant="outline">
-                  <Plus className="mr-2 h-4 w-4" />
-                  Add Partner
-                </Button>
-              </DialogTrigger>
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle>Add Partner Company</DialogTitle>
-                  <DialogDescription>
-                    Enter the details of the partner company you want to add.
-                  </DialogDescription>
-                </DialogHeader>
-                <div className="grid gap-4 py-4">
-                  <div className="grid gap-2">
-                    <Label htmlFor="name">Company Name</Label>
-                    <Input id="name" placeholder="Enter company name" />
-                  </div>
-                  <div className="grid gap-2">
-                    <Label htmlFor="email">Email</Label>
-                    <Input id="email" type="email" placeholder="Enter company email" />
-                  </div>
-                  <Button type="submit">Add Partner</Button>
-                </div>
-              </DialogContent>
-            </Dialog>
+            <Button 
+              variant="outline"
+              onClick={() => router.push("/company/partners/add")}
+            >
+              <Plus className="mr-2 h-4 w-4" />
+              Add Partner
+            </Button>
             <Dialog open={isAddOfferOpen} onOpenChange={setIsAddOfferOpen}>
               <DialogTrigger asChild>
                 <Button>

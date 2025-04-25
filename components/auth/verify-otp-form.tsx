@@ -36,7 +36,7 @@ export function VerifyOtpForm() {
       } else if (role === "admin") {
         router.push("/admin/dashboard")
       } else {
-        router.push("/dashboard")
+        router.push("/employee")
       }
     } catch (error) {
       toast({

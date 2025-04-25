@@ -1,8 +1,9 @@
 import type React from "react"
 import Link from "next/link"
-import { Gift } from "lucide-react"
+import { Gift, Home } from "lucide-react"
 import { DashboardNav } from "@/components/dashboard/dashboard-nav"
 import { UserNav } from "@/components/dashboard/user-nav"
+import { Button } from "@/components/ui/button"
 
 export default function DashboardLayout({
   children,
@@ -25,7 +26,15 @@ export default function DashboardLayout({
                 </div>
               </div>
             </Link>
-            <UserNav />
+            <div className="flex items-center gap-4">
+              <Link href="/">
+                <Button variant="ghost" size="sm" className="gap-2">
+                  <Home className="h-4 w-4" />
+                  <span>Home</span>
+                </Button>
+              </Link>
+              <UserNav />
+            </div>
           </div>
         </div>
       </header>
