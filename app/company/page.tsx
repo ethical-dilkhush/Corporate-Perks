@@ -5,7 +5,6 @@ import {
   Card,
   CardContent,
   CardDescription,
-  CardFooter,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
@@ -14,19 +13,10 @@ import {
   Users,
   Building2,
   Gift,
-  TrendingUp,
-  Clock,
   Plus,
   ArrowRight,
-  Bell,
-  ExternalLink,
-  Calendar,
   DollarSign,
-  Target,
-  Award,
-  Zap,
 } from "lucide-react"
-import { Progress } from "@/components/ui/progress"
 import { useRouter } from "next/navigation"
 
 // Mock data - in real app, this would come from an API
@@ -54,30 +44,6 @@ const recentActivities = [
     timestamp: "1 day ago",
     icon: BarChart3,
     color: "text-purple-500",
-  },
-]
-
-const upcomingEvents = [
-  {
-    id: 1,
-    title: "New Partner Onboarding",
-    date: "Tomorrow",
-    type: "Meeting",
-    icon: Building2,
-  },
-  {
-    id: 2,
-    title: "Employee Benefits Review",
-    date: "Next Week",
-    type: "Deadline",
-    icon: Target,
-  },
-  {
-    id: 3,
-    title: "Summer Perks Launch",
-    date: "In 2 weeks",
-    type: "Event",
-    icon: Zap,
   },
 ]
 
@@ -123,18 +89,21 @@ export default function CompanyPage() {
           </div>
           <div className="flex gap-4">
             <Button 
-              className="shadow-lg hover:shadow-primary/30 transition-all duration-300" 
+              variant="outline"
+              className="shadow-lg hover:shadow-primary/30 transition-all duration-300 min-w-[140px]" 
+              size="lg"
+              onClick={() => router.push("/company/partners/new")}
+            >
+              <Building2 className="mr-2 h-5 w-5" />
+              Add Partner
+            </Button>
+            <Button 
+              className="shadow-lg hover:shadow-primary/30 transition-all duration-300 min-w-[140px]" 
               size="lg"
               onClick={() => router.push("/company/offers/new")}
             >
               <Plus className="mr-2 h-5 w-5" />
               Create Offer
-            </Button>
-            <Button variant="outline" size="icon" className="relative">
-              <Bell className="h-5 w-5" />
-              <span className="absolute -top-1 -right-1 h-4 w-4 rounded-full bg-primary text-[10px] font-bold text-primary-foreground flex items-center justify-center">
-                3
-              </span>
             </Button>
           </div>
         </div>
@@ -245,103 +214,47 @@ export default function CompanyPage() {
             </CardContent>
           </Card>
 
-          {/* Upcoming Events */}
+          {/* Partners Overview */}
           <Card className="hover:shadow-lg transition-all duration-300">
             <CardHeader>
               <div className="flex items-center justify-between">
                 <div>
-                  <CardTitle className="text-xl">Upcoming Events</CardTitle>
-                  <CardDescription>Schedule and deadlines</CardDescription>
+                  <CardTitle className="text-xl">Top Performing Partners</CardTitle>
+                  <CardDescription>Partners with highest engagement and savings</CardDescription>
                 </div>
-                <Button variant="ghost" size="icon">
-                  <Calendar className="h-4 w-4" />
+                <Button variant="outline" className="group" onClick={() => router.push('/company/partners')}>
+                  View All Partners
+                  <ArrowRight className="ml-2 h-4 w-4 group-hover:translate-x-1 transition-transform" />
                 </Button>
               </div>
             </CardHeader>
             <CardContent>
               <div className="space-y-6">
-                {upcomingEvents.map((event) => (
-                  <div key={event.id} className="flex items-center gap-4 group">
+                {topPartners.map((partner) => (
+                  <div key={partner.name} className="flex items-center gap-4 group">
                     <div className="rounded-full bg-primary/10 p-2">
-                      <event.icon className="h-5 w-5 text-primary" />
+                      <Building2 className="h-5 w-5 text-primary" />
                     </div>
                     <div className="flex-1">
                       <p className="text-sm font-medium group-hover:text-primary transition-colors">
-                        {event.title}
+                        {partner.name}
                       </p>
-                      <div className="flex items-center gap-2">
-                        <Clock className="h-3 w-3 text-muted-foreground" />
-                        <p className="text-xs text-muted-foreground">{event.date}</p>
-                        <span className="text-xs px-1.5 py-0.5 rounded-full bg-primary/10 text-primary">
-                          {event.type}
-                        </span>
+                      <div className="flex items-center gap-4 mt-1">
+                        <span className="text-xs text-muted-foreground">{partner.category}</span>
+                        <span className="text-xs text-muted-foreground">{partner.activeOffers} active offers</span>
+                        <span className="text-xs text-muted-foreground">{partner.engagement} engagement</span>
                       </div>
                     </div>
-                    <Button variant="ghost" size="sm">
-                      View
-                    </Button>
+                    <div className="text-right">
+                      <p className="text-sm font-medium text-green-500">{partner.savings}</p>
+                      <p className="text-xs text-muted-foreground">Total savings</p>
+                    </div>
                   </div>
                 ))}
               </div>
             </CardContent>
           </Card>
         </div>
-
-        {/* Partners Overview */}
-        <Card className="hover:shadow-lg transition-all duration-300">
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <div>
-                <CardTitle className="text-xl">Top Performing Partners</CardTitle>
-                <CardDescription>Partners with highest engagement and savings</CardDescription>
-              </div>
-              <Button variant="outline" className="group" onClick={() => window.location.href = '/company/partners'}>
-                View All Partners
-                <ArrowRight className="ml-2 h-4 w-4 group-hover:translate-x-1 transition-transform" />
-              </Button>
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-6">
-              {topPartners.map((partner, index) => (
-                <div key={index} className="flex items-center gap-6 p-4 rounded-lg hover:bg-muted/50 transition-colors">
-                  <div className="rounded-full bg-primary/10 p-3">
-                    <Building2 className="h-6 w-6 text-primary" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center justify-between mb-2">
-                      <h3 className="font-semibold truncate">{partner.name}</h3>
-                      <span className="text-sm font-medium text-green-500">{partner.savings}</span>
-                    </div>
-                    <div className="flex items-center gap-4">
-                      <span className="text-sm text-muted-foreground">{partner.category}</span>
-                      <span className="text-sm text-muted-foreground">•</span>
-                      <span className="text-sm text-muted-foreground">{partner.activeOffers} active offers</span>
-                    </div>
-                    <div className="mt-2 flex items-center gap-2">
-                      <div className="flex-1 h-2 rounded-full bg-muted overflow-hidden">
-                        <div
-                          className="h-full bg-primary transition-all"
-                          style={{ width: partner.engagement }}
-                        />
-                      </div>
-                      <span className="text-sm font-medium">{partner.engagement}</span>
-                    </div>
-                  </div>
-                  <Button variant="ghost" size="icon">
-                    <ExternalLink className="h-4 w-4" />
-                  </Button>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-          <CardFooter>
-            <Button variant="outline" className="w-full group" onClick={() => router.push('/company/partners/new')}>
-              Add New Partner
-              <Plus className="ml-2 h-4 w-4" />
-            </Button>
-          </CardFooter>
-        </Card>
       </div>
     </div>
   )

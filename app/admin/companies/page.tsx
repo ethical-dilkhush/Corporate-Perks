@@ -207,82 +207,31 @@ export default function AdminCompaniesPage() {
       {/* Modal for company details */}
       {modalOpen && selectedCompany && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
-          <div className="bg-white rounded-xl shadow-2xl max-w-2xl w-full p-0 relative">
-            {/* Modal Header */}
-            <div className="flex items-center justify-between px-6 py-4 border-b">
-              <div>
-                <h2 className="text-2xl font-bold">{selectedCompany.name}</h2>
-                <span className="inline-block mt-1">
-                  <Badge
-                    variant={
-                      selectedCompany.status === "approved"
-                        ? "default"
-                        : selectedCompany.status === "pending"
-                        ? "outline"
-                        : "destructive"
-                    }
-                  >
-                    {selectedCompany.status.charAt(0).toUpperCase() + selectedCompany.status.slice(1)}
-                  </Badge>
-                </span>
-              </div>
-              <button
-                className="text-gray-400 hover:text-gray-700 text-2xl"
-                onClick={closeModal}
-                aria-label="Close"
-              >
-                &times;
-              </button>
+          <div className="bg-white rounded-lg shadow-lg max-w-lg w-full p-6 relative">
+            <button
+              className="absolute top-2 right-2 text-gray-400 hover:text-gray-700 text-xl"
+              onClick={closeModal}
+            >
+              &times;
+            </button>
+            <h2 className="text-2xl font-bold mb-4">{selectedCompany.name}</h2>
+            <div className="space-y-2">
+              <div><strong>Industry:</strong> {selectedCompany.industry}</div>
+              <div><strong>Address:</strong> {selectedCompany.address}</div>
+              <div><strong>City:</strong> {selectedCompany.city}</div>
+              <div><strong>State:</strong> {selectedCompany.state}</div>
+              <div><strong>Country:</strong> {selectedCompany.country}</div>
+              <div><strong>Postal Code:</strong> {selectedCompany.postal_code}</div>
+              <div><strong>Contact Name:</strong> {selectedCompany.contact_name}</div>
+              <div><strong>Contact Email:</strong> {selectedCompany.contact_email}</div>
+              <div><strong>Contact Phone:</strong> {selectedCompany.contact_phone}</div>
+              <div><strong>Website:</strong> <a href={selectedCompany.website} className="text-blue-600 underline" target="_blank" rel="noopener noreferrer">{selectedCompany.website}</a></div>
+              <div><strong>Tax ID:</strong> {selectedCompany.tax_id}</div>
+              <div><strong>Description:</strong> {selectedCompany.description}</div>
+              <div><strong>Status:</strong> {selectedCompany.status}</div>
+              <div><strong>Created At:</strong> {new Date(selectedCompany.created_at).toLocaleString()}</div>
             </div>
-            {/* Modal Content */}
-            <div className="px-6 py-6 grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="space-y-2">
-                <div><strong>Industry:</strong> {selectedCompany.industry}</div>
-                <div><strong>Address:</strong> {selectedCompany.address}</div>
-                <div><strong>City:</strong> {selectedCompany.city}</div>
-                <div><strong>State:</strong> {selectedCompany.state}</div>
-                <div><strong>Country:</strong> {selectedCompany.country}</div>
-                <div><strong>Postal Code:</strong> {selectedCompany.postal_code}</div>
-              </div>
-              <div className="space-y-2">
-                <div className="flex items-center gap-2">
-                  <span className="font-bold">Contact:</span>
-                  <span>{selectedCompany.contact_name}</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="font-bold">Email:</span>
-                  <a href={`mailto:${selectedCompany.contact_email}`} className="text-blue-600 underline">
-                    {selectedCompany.contact_email}
-                  </a>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="font-bold">Phone:</span>
-                  <a href={`tel:${selectedCompany.contact_phone}`} className="text-blue-600 underline">
-                    {selectedCompany.contact_phone}
-                  </a>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="font-bold">Website:</span>
-                  <a
-                    href={selectedCompany.website}
-                    className="text-blue-600 underline"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                  >
-                    {selectedCompany.website}
-                  </a>
-                </div>
-                <div><strong>Tax ID:</strong> {selectedCompany.tax_id}</div>
-              </div>
-              <div className="col-span-1 md:col-span-2 mt-4">
-                <div><strong>Description:</strong> {selectedCompany.description}</div>
-                <div className="mt-2 text-sm text-muted-foreground">
-                  <strong>Created At:</strong> {new Date(selectedCompany.created_at).toLocaleString()}
-                </div>
-              </div>
-            </div>
-            {/* Modal Actions */}
-            <div className="flex justify-end gap-2 px-6 py-4 border-t bg-gray-50 rounded-b-xl">
+            <div className="flex justify-end gap-2 mt-6">
               {selectedCompany.status === "pending" && (
                 <Button onClick={() => approveCompany(selectedCompany.id)}>
                   Approve

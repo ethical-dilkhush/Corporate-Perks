@@ -4,8 +4,7 @@ import { Gift } from "lucide-react"
 import { UserNav } from "@/components/dashboard/user-nav"
 
 const navItems = [
-  { name: "Overview", href: "/company" },
-  { name: "Dashboard", href: "/company/dashboard" },
+  { name: "Dashboard", href: "/company" },
   { name: "Offers", href: "/company/offers" },
   { name: "Analytics", href: "/company/analytics" },
   { name: "Employees", href: "/company/employees" },
