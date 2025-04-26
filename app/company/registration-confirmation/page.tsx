@@ -24,7 +24,7 @@ export default function RegistrationConfirmationPage() {
           </p>
         </CardContent>
         <CardFooter className="flex justify-center">
-          <Link href="/">
+          <Link href="/employee">
             <Button>Return to Home</Button>
           </Link>
         </CardFooter>

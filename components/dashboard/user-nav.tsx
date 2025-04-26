@@ -14,6 +14,11 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { useToast } from "@/hooks/use-toast"
 import { ThemeToggle } from "@/components/theme-toggle"
+import Link from "next/link"
+import { Home } from "lucide-react"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { DashboardStats } from "@/components/dashboard/dashboard-stats"
+import { RecentOffers } from "@/components/dashboard/recent-offers"
 
 export function UserNav() {
   const router = useRouter()
@@ -47,13 +52,14 @@ export function UserNav() {
           <DropdownMenuLabel className="font-normal">
             <div className="flex flex-col space-y-1">
               <p className="text-sm font-medium leading-none">John Doe</p>
-              <p className="text-xs leading-none text-muted-foreground">john.doe@company.com</p>
+              <p className="text-xs leading-none text-zinc-600 dark:text-zinc-300">john.doe@company.com</p>
             </div>
           </DropdownMenuLabel>
           <DropdownMenuSeparator />
           <DropdownMenuGroup>
+            <DropdownMenuItem onClick={() => router.push("/employee/dashboard")}>Dashboard</DropdownMenuItem>
             <DropdownMenuItem onClick={() => router.push("/dashboard/settings")}>Profile</DropdownMenuItem>
-            <DropdownMenuItem onClick={() => router.push("/dashboard/coupons")}>My Coupons</DropdownMenuItem>
+            <DropdownMenuItem onClick={() => router.push("/coupons")}>My Coupons</DropdownMenuItem>
           </DropdownMenuGroup>
           <DropdownMenuSeparator />
           <DropdownMenuItem onClick={handleLogout}>Log out</DropdownMenuItem>
