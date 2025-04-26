@@ -3,14 +3,35 @@ import prisma from "@/lib/prisma"
 
 export async function POST(request: Request) {
   try {
-    const { name, description, website, contactEmail, contactName } = await request.json()
+    const {
+      name,
+      industry,
+      address,
+      city,
+      state,
+      country,
+      postalCode,
+      contactName,
+      contactEmail,
+      contactPhone,
+      website,
+      taxId,
+      description,
+    } = await request.json()
 
     // Create new company with pending status
     const company = await prisma.company.create({
       data: {
         name,
-        description,
+        industry,
+        address,
+        city,
+        state,
+        country,
+        postalCode,
         website,
+        taxId,
+        description,
         status: "PENDING",
       },
     })
@@ -20,6 +41,7 @@ export async function POST(request: Request) {
       data: {
         email: contactEmail,
         name: contactName,
+        phone: contactPhone,
         role: "COMPANY",
         companyId: company.id,
       },
