@@ -14,21 +14,31 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { useToast } from "@/hooks/use-toast"
 import { ThemeToggle } from "@/components/theme-toggle"
+import { User } from "lucide-react"
 
 export function UserNav() {
   const router = useRouter()
   const { toast } = useToast()
 
-  const handleLogout = () => {
-    // In a real implementation, this would call your API to logout
-    // await fetch("/api/auth/logout", { method: "POST" })
-
-    toast({
-      title: "Logged out",
-      description: "You have been logged out successfully",
-    })
-
-    router.push("/")
+  const handleLogout = async () => {
+    try {
+      const response = await fetch("/api/auth/logout", { method: "POST" })
+      if (response.ok) {
+        toast({
+          title: "Logged out",
+          description: "You have been logged out successfully",
+        })
+        router.push("/auth/login")
+      } else {
+        throw new Error("Logout failed")
+      }
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to log out. Please try again.",
+        variant: "destructive",
+      })
+    }
   }
 
   return (
@@ -52,8 +62,13 @@ export function UserNav() {
           </DropdownMenuLabel>
           <DropdownMenuSeparator />
           <DropdownMenuGroup>
-            <DropdownMenuItem onClick={() => router.push("/dashboard/settings")}>Profile</DropdownMenuItem>
-            <DropdownMenuItem onClick={() => router.push("/dashboard/coupons")}>My Coupons</DropdownMenuItem>
+            <DropdownMenuItem onClick={() => router.push("/dashboard/profile")}>
+              <User className="mr-2 h-4 w-4" />
+              <span>Profile</span>
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => router.push("/dashboard/coupons")}>
+              <span>My Coupons</span>
+            </DropdownMenuItem>
           </DropdownMenuGroup>
           <DropdownMenuSeparator />
           <DropdownMenuItem onClick={handleLogout}>Log out</DropdownMenuItem>
