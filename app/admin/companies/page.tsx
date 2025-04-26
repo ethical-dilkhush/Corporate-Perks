@@ -474,26 +474,41 @@ export default function AdminCompaniesPage() {
               </div>
             </CardHeader>
             <CardContent>
-              <div className="space-y-4">
-                {filteredCompanies.map((company) => (
-                  <div key={company.id} className="flex items-center justify-between p-4 border rounded-lg">
-                    <div className="flex items-center space-x-4">
-                      <div className="p-2 bg-blue-100 rounded-full">
-                        <Building2 className="h-5 w-5 text-blue-600" />
-                      </div>
-                      <div>
-                        <p className="font-medium">{company.name}</p>
-                        <p className="text-sm text-muted-foreground">{company.employees} employees</p>
-                      </div>
-                    </div>
-                    <div className="flex items-center space-x-2">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Company</TableHead>
+                    <TableHead>Industry</TableHead>
+                    <TableHead>Employees</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {filteredCompanies.map((company) => (
+                    <TableRow key={company.id}>
+                      <TableCell>
+                        <div className="flex items-center space-x-4">
+                          <div className="p-2 bg-blue-100 rounded-full">
+                            <Building2 className="h-5 w-5 text-blue-600" />
+                          </div>
+                          <div>
+                            <p className="font-medium">{company.name}</p>
+                            <p className="text-sm text-muted-foreground">{company.website}</p>
+                          </div>
+                        </div>
+                      </TableCell>
+                      <TableCell>{company.industry}</TableCell>
+                      <TableCell>{company.employees}</TableCell>
+                      <TableCell>
+                        <Badge
+                          variant={company.status === "approved" ? "default" : "secondary"}
+                        >
+                          {company.status}
+                        </Badge>
+                      </TableCell>
                       <TableCell>
                         <div className="flex items-center space-x-2">
-                          <Badge
-                            variant={company.status === "approved" ? "default" : "secondary"}
-                          >
-                            {company.status}
-                          </Badge>
                           <Button variant="outline" size="sm" onClick={() => handleEdit(company)}>
                             <Edit className="mr-2 h-4 w-4" />
                             Edit
@@ -502,15 +517,15 @@ export default function AdminCompaniesPage() {
                             <Trash className="mr-2 h-4 w-4" />
                             Delete
                           </Button>
+                          <Button variant="ghost" size="sm" onClick={() => handleViewDetails(company)}>
+                            <Eye className="h-4 w-4" />
+                          </Button>
                         </div>
                       </TableCell>
-                      <Button variant="ghost" size="sm" onClick={() => handleViewDetails(company)}>
-                        <Eye className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </div>
-                ))}
-              </div>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
             </CardContent>
           </Card>
         )}
