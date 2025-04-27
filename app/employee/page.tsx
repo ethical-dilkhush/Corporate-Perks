@@ -9,9 +9,10 @@ import { PartnersSection } from "@/components/partners-section";
 import { Sparkles, Gift, ArrowRight } from "lucide-react";
 import { Footer } from "@/components/footer";
 import Image from "next/image";
-import { UserNav } from "@/components/user-nav";
 
-// Mock offers data
+// =============================================
+// Mock Data Section
+// =============================================
 const offers = [
   {
     id: "1",
@@ -22,7 +23,7 @@ const offers = [
     validUntil: "2025-06-30",
     category: "Electronics",
     image: "/modern-electronics-retail.png",
-    logo: "https://upload.wikimedia.org/wikipedia/commons/4/44/Microsoft_logo.svg", // Example logo
+    logo: "https://upload.wikimedia.org/wikipedia/commons/4/44/Microsoft_logo.svg",
     validUntilFormatted: "6/30/2025"
   },
   {
@@ -34,7 +35,7 @@ const offers = [
     validUntil: "2025-05-15",
     category: "Food & Beverage",
     image: "/cozy-corner-cafe.png",
-    logo: "https://upload.wikimedia.org/wikipedia/commons/2/2f/Google_2015_logo.svg", // Example logo
+    logo: "https://upload.wikimedia.org/wikipedia/commons/2/2f/Google_2015_logo.svg",
   },
   {
     id: "3",
@@ -45,24 +46,29 @@ const offers = [
     validUntil: "2025-07-01",
     category: "Office Supplies",
     image: "/placeholder.svg",
-    logo: "https://upload.wikimedia.org/wikipedia/commons/a/a9/Amazon_logo.svg", // Example logo
+    logo: "https://upload.wikimedia.org/wikipedia/commons/a/a9/Amazon_logo.svg",
   },
 ];
 
+// =============================================
+// Main Component
+// =============================================
 export default function EmployeeHomePage() {
   const employeeName = "Employee Name";
-  const [year, setYear] = useState("");
+  const [year, setYear] = useState<string>("");
 
   useEffect(() => {
-    setYear(new Date().getFullYear());
+    setYear(new Date().getFullYear().toString());
   }, []);
 
   return (
-    <div className="flex flex-col min-h-screen bg-gray-50">
+    <div className="flex flex-col min-h-screen bg-background">
       <main className="flex-1">
-        {/* Welcome Section */}
-        <section className="w-full min-h-[60vh] flex flex-col md:flex-row items-center justify-center bg-gradient-to-br from-blue-100 via-white to-pink-100 py-12 px-0">
-          {/* Left: Illustration (full height on desktop) */}
+        {/* =============================================
+            Hero Welcome Section
+            ============================================= */}
+        <section className="w-full min-h-[60vh] flex flex-col md:flex-row items-center justify-center bg-gradient-to-br from-primary/5 via-background/50 to-background dark:from-primary/10 dark:via-background/80 dark:to-background py-12 px-0">
+          {/* Hero Image Section */}
           <div className="w-full md:w-1/2 flex justify-center md:justify-end">
             <Image
               src="https://images.unsplash.com/photo-1519125323398-675f0ddb6308?auto=format&fit=crop&w=800&q=80"
@@ -73,7 +79,8 @@ export default function EmployeeHomePage() {
               priority
             />
           </div>
-          {/* Right: Welcome Text */}
+          
+          {/* Hero Text Section */}
           <div className="w-full md:w-1/2 flex flex-col items-center md:items-start text-center md:text-left gap-4 px-4 md:px-16">
             <h1 className="text-4xl md:text-6xl font-extrabold text-foreground drop-shadow">
               Hi {employeeName}
@@ -92,52 +99,76 @@ export default function EmployeeHomePage() {
           </div>
         </section>
 
-        {/* Offers Section */}
-        <section className="container mx-auto px-4 md:px-6 py-12">
-          <h2 className="text-3xl font-bold tracking-tighter sm:text-4xl md:text-5xl text-center mb-8">
-            Exclusive Discounts from Our Partners
-          </h2>
+        {/* =============================================
+            Featured Offers Section
+            ============================================= */}
+        <section className="container mx-auto px-4 md:px-6 py-12 bg-background">
+          <div className="flex flex-col items-center mb-8">
+            <h2 className="text-3xl font-bold tracking-tighter sm:text-4xl md:text-5xl text-center text-foreground mb-4">
+              Exclusive Discounts from Our Partners
+            </h2>
+            <Link href="/employee/dashboard/offers">
+              <Button variant="outline" className="flex items-center gap-2">
+                View All Offers
+                <ArrowRight className="h-4 w-4" />
+              </Button>
+            </Link>
+          </div>
           <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
             {offers.map((offer) => (
-              <div
-                key={offer.id}
-                className="bg-white rounded-xl border border-gray-200 p-6 flex flex-col justify-between min-h-[220px] hover:shadow transition"
+              <Link 
+                key={offer.id} 
+                href={`/employee/dashboard/offers#${offer.id}`}
+                className="block"
               >
-                {/* Top: Image in Circle and Company */}
-                <div className="flex items-center gap-4 mb-2">
-                  <div className="w-12 h-12 rounded-full bg-gray-100 flex items-center justify-center overflow-hidden">
-                    <img src={offer.image} alt={offer.company} className="w-12 h-12 object-cover" />
+                <div
+                  className="bg-card rounded-xl border border-border p-6 flex flex-col justify-between min-h-[220px] hover:shadow transition cursor-pointer"
+                >
+                  {/* Offer Header */}
+                  <div className="flex items-center gap-4 mb-2">
+                    <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center overflow-hidden">
+                      <img src={offer.image} alt={offer.company} className="w-12 h-12 object-cover" />
+                    </div>
+                    <div>
+                      <div className="font-bold text-lg text-foreground">{offer.company}</div>
+                      <div className="text-sm text-muted-foreground">{offer.category}</div>
+                    </div>
                   </div>
-                  <div>
-                    <div className="font-bold text-lg text-foreground">{offer.company}</div>
-                    <div className="text-sm text-muted-foreground">{offer.category}</div>
+
+                  {/* Offer Details */}
+                  <div className="flex items-center gap-2 mt-2 mb-2">
+                    <Gift className="w-5 h-5 text-primary" />
+                    <span className="font-medium text-foreground text-base">{offer.title}</span>
+                  </div>
+                  <div className="text-sm text-muted-foreground mb-2">{offer.description}</div>
+
+                  {/* Offer Footer */}
+                  <div className="flex items-center justify-between mt-4">
+                    <span className="text-xs text-muted-foreground">
+                      Valid until {offer.validUntilFormatted}
+                    </span>
+                    <ArrowRight className="w-5 h-5 text-muted-foreground" />
                   </div>
                 </div>
-                {/* Offer Title */}
-                <div className="flex items-center gap-2 mt-2 mb-2">
-                  <Gift className="w-5 h-5 text-primary" />
-                  <span className="font-medium text-foreground text-base">{offer.title}</span>
-                </div>
-                {/* Description */}
-                <div className="text-sm text-muted-foreground mb-2">{offer.description}</div>
-                {/* Note and Arrow */}
-                <div className="flex items-center justify-between mt-4">
-                  <span className="text-xs text-muted-foreground">
-                    Valid until {offer.validUntilFormatted}
-                  </span>
-                  <ArrowRight className="w-5 h-5 text-muted-foreground" />
-                </div>
-              </div>
+              </Link>
             ))}
           </div>
         </section>
 
-        {/* Partners Section */}
+        {/* =============================================
+            Partners Showcase Section
+            ============================================= */}
         <PartnersSection />
 
-        {/* Features Section */}
+        {/* =============================================
+            Features Highlight Section
+            ============================================= */}
         <FeaturesSection />
       </main>
+      
+      {/* =============================================
+          Footer Section
+          ============================================= */}
       <Footer />
     </div>
   );

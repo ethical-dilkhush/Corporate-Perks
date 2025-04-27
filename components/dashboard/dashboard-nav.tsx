@@ -9,27 +9,27 @@ import { LayoutDashboard, Tag, Ticket, History, Settings } from "lucide-react"
 const navItems = [
   {
     title: "Dashboard",
-    href: "/dashboard",
+    href: "/employee/dashboard",
     icon: LayoutDashboard,
   },
   {
     title: "Offers",
-    href: "/dashboard/offers",
+    href: "/employee/dashboard/offers",
     icon: Tag,
   },
   {
     title: "My Coupons",
-    href: "/dashboard/coupons",
+    href: "/employee/dashboard/coupons",
     icon: Ticket,
   },
   {
     title: "History",
-    href: "/dashboard/history",
+    href: "/employee/dashboard/history",
     icon: History,
   },
   {
     title: "Settings",
-    href: "/dashboard/settings",
+    href: "/employee/dashboard/settings",
     icon: Settings,
   },
 ]

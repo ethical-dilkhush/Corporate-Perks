@@ -58,8 +58,6 @@ export function UserNav() {
           <DropdownMenuSeparator />
           <DropdownMenuGroup>
             <DropdownMenuItem onClick={() => router.push("/employee/dashboard")}>Dashboard</DropdownMenuItem>
-            <DropdownMenuItem onClick={() => router.push("/dashboard/settings")}>Profile</DropdownMenuItem>
-            <DropdownMenuItem onClick={() => router.push("/coupons")}>My Coupons</DropdownMenuItem>
           </DropdownMenuGroup>
           <DropdownMenuSeparator />
           <DropdownMenuItem onClick={handleLogout}>Log out</DropdownMenuItem>

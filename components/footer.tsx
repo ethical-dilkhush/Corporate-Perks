@@ -1,14 +1,23 @@
+"use client";
+
 import Link from "next/link"
 import { Facebook, Twitter, Instagram, Linkedin } from "lucide-react"
+import { useState, useEffect } from "react"
 
 export function Footer() {
+  const [year, setYear] = useState<string>("");
+
+  useEffect(() => {
+    setYear(new Date().getFullYear().toString());
+  }, []);
+
   return (
     <footer className="border-t bg-background">
       <div className="container mx-auto px-4 py-12">
-        <div className="grid gap-8 md:grid-cols-4">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-x-16 gap-y-8">
           {/* Company Info */}
-          <div className="space-y-4">
-            <h3 className="text-lg font-semibold">Corporate Perks</h3>
+          <div className="flex flex-col space-y-4">
+            <h3 className="text-lg font-semibold text-foreground">Corporate Perks</h3>
             <p className="text-muted-foreground">
               Empowering companies to provide exclusive benefits to their employees through curated partnerships.
             </p>
@@ -29,9 +38,9 @@ export function Footer() {
           </div>
 
           {/* Quick Links */}
-          <div className="space-y-4">
-            <h3 className="text-lg font-semibold">Quick Links</h3>
-            <ul className="space-y-2">
+          <div className="flex flex-col space-y-4">
+            <h3 className="text-lg font-semibold text-foreground">Quick Links</h3>
+            <ul className="flex flex-col space-y-3">
               <li>
                 <Link href="/about" className="text-muted-foreground hover:text-foreground">
                   About Us
@@ -56,9 +65,9 @@ export function Footer() {
           </div>
 
           {/* Resources */}
-          <div className="space-y-4">
-            <h3 className="text-lg font-semibold">Resources</h3>
-            <ul className="space-y-2">
+          <div className="flex flex-col space-y-4">
+            <h3 className="text-lg font-semibold text-foreground">Resources</h3>
+            <ul className="flex flex-col space-y-3">
               <li>
                 <Link href="/blog" className="text-muted-foreground hover:text-foreground">
                   Blog
@@ -83,9 +92,9 @@ export function Footer() {
           </div>
 
           {/* Contact Info */}
-          <div className="space-y-4">
-            <h3 className="text-lg font-semibold">Contact Us</h3>
-            <ul className="space-y-2">
+          <div className="flex flex-col space-y-4">
+            <h3 className="text-lg font-semibold text-foreground">Contact Us</h3>
+            <ul className="flex flex-col space-y-3">
               <li className="text-muted-foreground">
                 Email: support@corporateperks.com
               </li>
@@ -101,7 +110,7 @@ export function Footer() {
 
         {/* Copyright */}
         <div className="mt-12 border-t pt-8 text-center text-sm text-muted-foreground">
-          <p>© {new Date().getFullYear()} Corporate Perks. All rights reserved.</p>
+          <p>© {year} Corporate Perks. All rights reserved.</p>
         </div>
       </div>
     </footer>
