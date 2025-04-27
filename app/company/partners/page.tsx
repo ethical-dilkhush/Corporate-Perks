@@ -1,14 +1,11 @@
 "use client"
 
+import { useState, useEffect } from "react"
+import { useRouter } from "next/navigation"
+import { Building2, Plus, Search, ExternalLink, MoreHorizontal, Mail, Phone, MapPin, Check, Clock, X } from "lucide-react"
+import { supabase } from "@/lib/supabase"
 import { Button } from "@/components/ui/button"
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card"
+import { Input } from "@/components/ui/input"
 import {
   Table,
   TableBody,
@@ -18,16 +15,12 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import {
-  Building2,
-  Plus,
-  ExternalLink,
-  MoreHorizontal,
-  Mail,
-  Phone,
-  MapPin,
-  Check,
-  Clock,
-} from "lucide-react"
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -37,69 +30,111 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { Badge } from "@/components/ui/badge"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { useRouter } from "next/navigation"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
+import { useToast } from "@/hooks/use-toast"
 
-// Mock data - in real app, this would come from an API
-const partners = [
-  {
-    id: 1,
-    name: "TechStore Electronics",
-    category: "Electronics",
-    status: "Active",
-    offers: 5,
-    redemptions: 234,
-    engagement: "85%",
-    contact: {
-      name: "John Smith",
-      email: "john@techstore.com",
-      phone: "+1 (555) 123-4567",
-      location: "New York, NY",
-    },
-  },
-  {
-    id: 2,
-    name: "FitLife Gym",
-    category: "Health & Fitness",
-    status: "Active",
-    offers: 3,
-    redemptions: 156,
-    engagement: "72%",
-    contact: {
-      name: "Sarah Johnson",
-      email: "sarah@fitlife.com",
-      phone: "+1 (555) 234-5678",
-      location: "Los Angeles, CA",
-    },
-  },
-  {
-    id: 3,
-    name: "FoodExpress",
-    category: "Food & Dining",
-    status: "Pending",
-    offers: 0,
-    redemptions: 0,
-    engagement: "0%",
-    contact: {
-      name: "Mike Wilson",
-      email: "mike@foodexpress.com",
-      phone: "+1 (555) 345-6789",
-      location: "Chicago, IL",
-    },
-  },
-]
-
-const partnerCategories = [
-  { name: "Electronics", count: 3 },
-  { name: "Health & Fitness", count: 2 },
-  { name: "Food & Dining", count: 4 },
-  { name: "Entertainment", count: 1 },
-  { name: "Travel", count: 2 },
-]
+interface Partner {
+  id: string
+  company_name: string
+  business_type: string
+  email: string
+  phone: string
+  website: string | null
+  address: string
+  city: string
+  state: string
+  pincode: string
+  employee_count: string
+  partnership_type: string
+  image_url: string | null
+  created_at: string
+}
 
 export default function PartnersPage() {
   const router = useRouter()
+  const { toast } = useToast()
+  const [partners, setPartners] = useState<Partner[]>([])
+  const [searchQuery, setSearchQuery] = useState("")
+  const [isLoading, setIsLoading] = useState(true)
+  const [selectedPartner, setSelectedPartner] = useState<Partner | null>(null)
+  const [isDetailsOpen, setIsDetailsOpen] = useState(false)
+  const [isRemoving, setIsRemoving] = useState(false)
+
+  useEffect(() => {
+    fetchPartners()
+  }, [])
+
+  const fetchPartners = async () => {
+    try {
+      const { data, error } = await supabase
+        .from("partners")
+        .select("*")
+        .order("created_at", { ascending: false })
+
+      if (error) {
+        console.error("Error fetching partners:", error)
+        return
+      }
+
+      setPartners(data || [])
+    } catch (error) {
+      console.error("Error:", error)
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const filteredPartners = partners.filter((partner) =>
+    partner.company_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    partner.business_type.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    partner.email.toLowerCase().includes(searchQuery.toLowerCase())
+  )
+
+  const handleContactPartner = (email: string) => {
+    window.location.href = `mailto:${email}`
+  }
+
+  const handleViewDetails = (partner: Partner) => {
+    setSelectedPartner(partner)
+    setIsDetailsOpen(true)
+  }
+
+  const handleRemovePartner = async (partnerId: string) => {
+    try {
+      setIsRemoving(true)
+      const { error } = await supabase
+        .from("partners")
+        .delete()
+        .eq("id", partnerId)
+
+      if (error) {
+        throw error
+      }
+
+      // Remove the partner from the local state
+      setPartners(partners.filter(p => p.id !== partnerId))
+      
+      toast({
+        title: "Partner removed",
+        description: "The partner has been successfully removed.",
+      })
+    } catch (error) {
+      console.error("Error removing partner:", error)
+      toast({
+        title: "Error",
+        description: "Failed to remove partner. Please try again.",
+        variant: "destructive",
+      })
+    } finally {
+      setIsRemoving(false)
+    }
+  }
 
   return (
     <div className="container mx-auto px-4 md:px-6 py-8">
@@ -119,21 +154,10 @@ export default function PartnersPage() {
               <Input
                 placeholder="Search partners..."
                 className="w-[300px] pl-8"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
               />
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-                />
-              </svg>
+              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
             </div>
             <Button 
               className="shadow-lg hover:shadow-primary/30 transition-all duration-300"
@@ -154,13 +178,15 @@ export default function PartnersPage() {
             </CardHeader>
             <CardContent>
               <div className="space-y-2">
-                {partnerCategories.map((category) => (
+                {Array.from(new Set(partners.map(p => p.business_type))).map((type) => (
                   <button
-                    key={category.name}
+                    key={type}
                     className="flex items-center justify-between w-full p-2 text-sm rounded-lg hover:bg-muted transition-colors"
                   >
-                    <span>{category.name}</span>
-                    <Badge variant="secondary">{category.count}</Badge>
+                    <span>{type}</span>
+                    <Badge variant="secondary">
+                      {partners.filter(p => p.business_type === type).length}
+                    </Badge>
                   </button>
                 ))}
               </div>
@@ -174,94 +200,202 @@ export default function PartnersPage() {
               <CardDescription>View and manage your partnerships</CardDescription>
             </CardHeader>
             <CardContent>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Company</TableHead>
-                    <TableHead>Category</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Offers</TableHead>
-                    <TableHead>Engagement</TableHead>
-                    <TableHead></TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {partners.map((partner) => (
-                    <TableRow key={partner.id}>
-                      <TableCell>
-                        <div className="flex items-center gap-3">
-                          <div className="rounded-lg bg-primary/10 p-2">
-                            <Building2 className="h-5 w-5 text-primary" />
-                          </div>
-                          <div>
-                            <div className="font-medium">{partner.name}</div>
-                            <div className="text-sm text-muted-foreground">
-                              {partner.contact.location}
-                            </div>
-                          </div>
-                        </div>
-                      </TableCell>
-                      <TableCell>{partner.category}</TableCell>
-                      <TableCell>
-                        <Badge
-                          variant={partner.status === "Active" ? "default" : "secondary"}
-                          className="capitalize"
-                        >
-                          {partner.status === "Active" ? (
-                            <Check className="mr-1 h-3 w-3" />
-                          ) : (
-                            <Clock className="mr-1 h-3 w-3" />
-                          )}
-                          {partner.status}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>{partner.offers}</TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-2">
-                          <div className="h-2 w-16 rounded-full bg-muted overflow-hidden">
-                            <div
-                              className="h-full bg-primary transition-all"
-                              style={{
-                                width: partner.engagement,
-                              }}
-                            />
-                          </div>
-                          <span className="text-sm">{partner.engagement}</span>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon">
-                              <MoreHorizontal className="h-4 w-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end" className="w-48">
-                            <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem>
-                              <Mail className="mr-2 h-4 w-4" />
-                              Contact Partner
-                            </DropdownMenuItem>
-                            <DropdownMenuItem>
-                              <ExternalLink className="mr-2 h-4 w-4" />
-                              View Details
-                            </DropdownMenuItem>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem className="text-destructive">
-                              Remove Partner
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </TableCell>
+              {isLoading ? (
+                <div className="flex items-center justify-center h-32">
+                  <p className="text-muted-foreground">Loading partners...</p>
+                </div>
+              ) : (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Company</TableHead>
+                      <TableHead>Business Type</TableHead>
+                      <TableHead>Contact</TableHead>
+                      <TableHead>Employees</TableHead>
+                      <TableHead>Partnership</TableHead>
+                      <TableHead></TableHead>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+                  </TableHeader>
+                  <TableBody>
+                    {filteredPartners.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={6} className="text-center">
+                          No partners found
+                        </TableCell>
+                      </TableRow>
+                    ) : (
+                      filteredPartners.map((partner) => (
+                        <TableRow key={partner.id}>
+                          <TableCell>
+                            <div className="flex items-center gap-3">
+                              {partner.image_url ? (
+                                <img
+                                  src={partner.image_url}
+                                  alt={partner.company_name}
+                                  className="h-8 w-8 rounded-full object-cover"
+                                />
+                              ) : (
+                                <div className="rounded-lg bg-primary/10 p-2">
+                                  <Building2 className="h-5 w-5 text-primary" />
+                                </div>
+                              )}
+                              <div>
+                                <div className="font-medium">{partner.company_name}</div>
+                                <div className="text-sm text-muted-foreground">
+                                  {partner.city}, {partner.state}
+                                </div>
+                              </div>
+                            </div>
+                          </TableCell>
+                          <TableCell>{partner.business_type}</TableCell>
+                          <TableCell>
+                            <div className="space-y-1">
+                              <div className="flex items-center gap-2">
+                                <Mail className="h-4 w-4 text-muted-foreground" />
+                                <span>{partner.email}</span>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <Phone className="h-4 w-4 text-muted-foreground" />
+                                <span>{partner.phone}</span>
+                              </div>
+                            </div>
+                          </TableCell>
+                          <TableCell>{partner.employee_count}</TableCell>
+                          <TableCell>
+                            <Badge
+                              variant={partner.partnership_type === "Exclusive" ? "default" : "secondary"}
+                              className="capitalize"
+                            >
+                              {partner.partnership_type}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" size="icon">
+                                  <MoreHorizontal className="h-4 w-4" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end" className="w-48">
+                                <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem onClick={() => handleContactPartner(partner.email)}>
+                                  <Mail className="mr-2 h-4 w-4" />
+                                  Contact Partner
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => handleViewDetails(partner)}>
+                                  <ExternalLink className="mr-2 h-4 w-4" />
+                                  View Details
+                                </DropdownMenuItem>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem 
+                                  className="text-destructive"
+                                  onClick={() => handleRemovePartner(partner.id)}
+                                  disabled={isRemoving}
+                                >
+                                  <X className="mr-2 h-4 w-4" />
+                                  Remove Partner
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    )}
+                  </TableBody>
+                </Table>
+              )}
             </CardContent>
           </Card>
         </div>
       </div>
+
+      {/* Partner Details Dialog */}
+      <Dialog open={isDetailsOpen} onOpenChange={setIsDetailsOpen}>
+        <DialogContent className="sm:max-w-[600px]">
+          <DialogHeader>
+            <DialogTitle>Partner Details</DialogTitle>
+            <DialogDescription>
+              View complete information about the partner company
+            </DialogDescription>
+          </DialogHeader>
+          {selectedPartner && (
+            <div className="space-y-6">
+              <div className="flex items-center gap-4">
+                {selectedPartner.image_url ? (
+                  <img
+                    src={selectedPartner.image_url}
+                    alt={selectedPartner.company_name}
+                    className="h-16 w-16 rounded-full object-cover"
+                  />
+                ) : (
+                  <div className="h-16 w-16 rounded-full bg-primary/10 flex items-center justify-center">
+                    <Building2 className="h-8 w-8 text-primary" />
+                  </div>
+                )}
+                <div>
+                  <h3 className="text-xl font-semibold">{selectedPartner.company_name}</h3>
+                  <p className="text-muted-foreground">{selectedPartner.business_type}</p>
+                </div>
+              </div>
+
+              <div className="grid gap-4 md:grid-cols-2">
+                <div className="space-y-2">
+                  <h4 className="font-medium">Contact Information</h4>
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2">
+                      <Mail className="h-4 w-4 text-muted-foreground" />
+                      <span>{selectedPartner.email}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Phone className="h-4 w-4 text-muted-foreground" />
+                      <span>{selectedPartner.phone}</span>
+                    </div>
+                    {selectedPartner.website && (
+                      <div className="flex items-center gap-2">
+                        <ExternalLink className="h-4 w-4 text-muted-foreground" />
+                        <a
+                          href={selectedPartner.website}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-primary hover:underline"
+                        >
+                          {selectedPartner.website}
+                        </a>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <h4 className="font-medium">Company Details</h4>
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2">
+                      <Building2 className="h-4 w-4 text-muted-foreground" />
+                      <span>{selectedPartner.employee_count} Employees</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Badge variant={selectedPartner.partnership_type === "Exclusive" ? "default" : "secondary"}>
+                        {selectedPartner.partnership_type} Partnership
+                      </Badge>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="md:col-span-2 space-y-2">
+                  <h4 className="font-medium">Address</h4>
+                  <div className="flex items-center gap-2">
+                    <MapPin className="h-4 w-4 text-muted-foreground" />
+                    <span>
+                      {selectedPartner.address}, {selectedPartner.city}, {selectedPartner.state} - {selectedPartner.pincode}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   )
 } 

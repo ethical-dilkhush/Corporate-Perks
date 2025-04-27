@@ -1,16 +1,16 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
+import { zodResolver } from "@hookform/resolvers/zod"
+import { useForm } from "react-hook-form"
+import * as z from "zod"
+import { Building2, ArrowLeft, Upload, Calendar, Tag, Percent, Info, Clock, FileText, Users, Image as ImageIcon, X } from "lucide-react"
+import { useToast } from "@/hooks/use-toast"
+import { supabase } from "@/lib/supabase"
+import Image from "next/image"
+
 import { Button } from "@/components/ui/button"
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card"
 import {
   Form,
   FormControl,
@@ -20,6 +20,8 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form"
+import { Input } from "@/components/ui/input"
+import { Textarea } from "@/components/ui/textarea"
 import {
   Select,
   SelectContent,
@@ -27,446 +29,672 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { Input } from "@/components/ui/input"
-import { Textarea } from "@/components/ui/textarea"
-import { zodResolver } from "@hookform/resolvers/zod"
-import { useForm } from "react-hook-form"
-import * as z from "zod"
-import { ArrowLeft, Loader2, Calendar, Percent, Tag, Clock, Users, FileText, Check } from "lucide-react"
-import { toast } from "sonner"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Calendar as CalendarComponent } from "@/components/ui/calendar"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { cn } from "@/lib/utils"
-
-const categories = [
-  { id: "electronics", name: "Electronics", icon: "💻" },
-  { id: "fashion", name: "Fashion", icon: "👕" },
-  { id: "food", name: "Food & Dining", icon: "🍽️" },
-  { id: "health", name: "Health & Wellness", icon: "💪" },
-  { id: "travel", name: "Travel", icon: "✈️" },
-  { id: "entertainment", name: "Entertainment", icon: "🎬" },
-  { id: "education", name: "Education", icon: "📚" },
-  { id: "services", name: "Services", icon: "🛠️" },
-]
+import { format } from "date-fns"
 
 const formSchema = z.object({
-  title: z.string().min(5, "Title must be at least 5 characters"),
-  description: z.string().min(20, "Description must be at least 20 characters"),
+  title: z.string().min(2, "Title must be at least 2 characters"),
+  description: z.string().min(10, "Description must be at least 10 characters"),
+  partner_id: z.string().uuid("Please select a valid partner"),
   category: z.string().min(1, "Please select a category"),
-  discountType: z.enum(["percentage", "fixed"]),
-  discountValue: z.string().min(1, "Please enter discount value"),
-  validFrom: z.string().min(1, "Start date is required"),
-  validUntil: z.string().min(1, "End date is required"),
-  termsAndConditions: z.string().min(10, "Terms and conditions are required"),
-  redemptionLimit: z.string().min(1, "Please enter redemption limit"),
-  promoCode: z.string().optional(),
+  discountType: z.string().min(1, "Please select a discount type"),
+  discountValue: z.string().min(1, "Please enter a discount value")
+    .refine((val) => {
+      if (val.includes('%')) {
+        const num = parseFloat(val.replace('%', ''));
+        return !isNaN(num) && num >= 0 && num <= 100;
+      }
+      return !isNaN(parseFloat(val)) && parseFloat(val) >= 0;
+    }, "Please enter a valid discount value"),
+  startDate: z.date({
+    required_error: "Please select a start date",
+  }),
+  endDate: z.date({
+    required_error: "Please select an end date",
+  }),
+  terms: z.string().min(10, "Terms must be at least 10 characters"),
+  image: z.any().optional(),
 })
 
-export default function CreateOfferPage() {
+const categories = [
+  "Electronics",
+  "Fashion & Apparel",
+  "Food & Dining",
+  "Health & Wellness",
+  "Home & Living",
+  "Travel & Hospitality",
+  "Entertainment",
+  "Education",
+  "Other",
+]
+
+const discountTypes = [
+  "Percentage",
+  "Fixed Amount",
+  "Buy One Get One",
+  "Free Shipping",
+]
+
+interface Partner {
+  id: string
+  company_name: string
+}
+
+export default function NewOfferPage() {
   const router = useRouter()
-  const [isSubmitting, setIsSubmitting] = useState(false)
-  const [currentStep, setCurrentStep] = useState(1)
+  const { toast } = useToast()
+  const [isLoading, setIsLoading] = useState(false)
+  const [success, setSuccess] = useState(false)
+  const [errorMsg, setErrorMsg] = useState("")
+  const [partners, setPartners] = useState<Partner[]>([])
+  const [selectedImage, setSelectedImage] = useState<File | null>(null)
+  const [imagePreview, setImagePreview] = useState<string | null>(null)
+
+  useEffect(() => {
+    fetchPartners()
+  }, [])
+
+  const fetchPartners = async () => {
+    try {
+      const { data, error } = await supabase
+        .from("partners")
+        .select("id, company_name")
+        .order("company_name")
+
+      if (error) {
+        console.error("Error fetching partners:", error)
+        return
+      }
+
+      setPartners(data || [])
+    } catch (error) {
+      console.error("Error:", error)
+    }
+  }
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
       title: "",
       description: "",
+      partner_id: "",
       category: "",
-      discountType: "percentage",
+      discountType: "",
       discountValue: "",
-      validFrom: new Date().toISOString().split('T')[0],
-      validUntil: "",
-      termsAndConditions: "",
-      redemptionLimit: "",
-      promoCode: "",
+      terms: "",
+      image: null,
     },
   })
 
-  // Watch form fields to determine completion status
-  const title = form.watch("title")
-  const description = form.watch("description")
-  const category = form.watch("category")
-  const discountType = form.watch("discountType")
-  const discountValue = form.watch("discountValue")
-  const validFrom = form.watch("validFrom")
-  const validUntil = form.watch("validUntil")
-  const termsAndConditions = form.watch("termsAndConditions")
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (file) {
+      // Validate file type
+      if (!file.type.startsWith('image/')) {
+        toast({
+          title: "Invalid file type",
+          description: "Please upload an image file",
+          variant: "destructive",
+        })
+        return
+      }
 
-  // Calculate completion status for each section
-  const basicDetailsComplete = title.length >= 5 && description.length >= 20
-  const discountDetailsComplete = category && discountType && discountValue
-  const validityComplete = validFrom && validUntil
-  
-  // Progress steps
-  const steps = [
-    {
-      title: "Basic Details",
-      description: "Title and description",
-      icon: Tag,
-      complete: basicDetailsComplete,
-      color: "blue"
-    },
-    {
-      title: "Discount Details",
-      description: "Category and value",
-      icon: Percent,
-      complete: discountDetailsComplete,
-      color: "purple"
-    },
-    {
-      title: "Terms & Validity",
-      description: "Dates and conditions",
-      icon: Clock,
-      complete: validityComplete,
-      color: "green"
+      // Validate file size (2MB limit)
+      if (file.size > 2 * 1024 * 1024) {
+        toast({
+          title: "File too large",
+          description: "Image must be less than 2MB",
+          variant: "destructive",
+        })
+        return
+      }
+
+      setSelectedImage(file)
+      const reader = new FileReader()
+      reader.onloadend = () => {
+        setImagePreview(reader.result as string)
+      }
+      reader.readAsDataURL(file)
     }
-  ]
+  }
+
+  const removeImage = () => {
+    setSelectedImage(null)
+    setImagePreview(null)
+    form.setValue("image", null)
+  }
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
+    setIsLoading(true)
+    setSuccess(false)
+    setErrorMsg("")
+    
     try {
-      setIsSubmitting(true)
-      // In a real app, this would be an API call
-      console.log(values)
-      await new Promise(resolve => setTimeout(resolve, 1000)) // Simulate API call
-      toast.success("Offer created successfully")
-      router.push("/company/offers")
+      // Validate dates
+      if (values.endDate <= values.startDate) {
+        throw new Error("End date must be after start date")
+      }
+
+      let imageUrl = null;
+
+      // Handle image upload first if an image is selected
+      if (selectedImage) {
+        try {
+          // Validate file type
+          if (!selectedImage.type.startsWith('image/')) {
+            throw new Error("Please upload a valid image file")
+          }
+
+          // Validate file size (2MB limit)
+          if (selectedImage.size > 2 * 1024 * 1024) {
+            throw new Error("Image must be less than 2MB")
+          }
+
+          const fileExt = selectedImage.name.split('.').pop()
+          const fileName = `${Math.random().toString(36).substring(2)}.${fileExt}`
+          const filePath = `offers/${fileName}`
+
+          console.log('Attempting to upload image to path:', filePath)
+
+          // Create form data
+          const formData = new FormData()
+          formData.append('file', selectedImage)
+
+          // Upload image using the API route
+          const response = await fetch('/api/upload', {
+            method: 'POST',
+            body: formData,
+          })
+
+          if (!response.ok) {
+            const errorData = await response.json()
+            throw new Error(errorData.error || 'Failed to upload image')
+          }
+
+          const { url } = await response.json()
+          console.log('Image uploaded successfully, URL:', url)
+          imageUrl = url
+
+        } catch (uploadError) {
+          console.error('Image upload failed:', uploadError)
+          // Continue with offer creation even if image upload fails
+          toast({
+            title: "Image upload failed",
+            description: "The offer will be created without an image.",
+            variant: "destructive",
+          })
+        }
+      }
+
+      // Prepare offer data
+      const offerData = {
+        title: values.title,
+        description: values.description,
+        partner_id: values.partner_id,
+        category: values.category,
+        discount_type: values.discountType,
+        discount_value: values.discountValue,
+        start_date: values.startDate.toISOString(),
+        end_date: values.endDate.toISOString(),
+        terms: values.terms,
+        image_url: imageUrl,
+        created_at: new Date().toISOString(),
+      }
+
+      console.log('Submitting offer data:', offerData)
+
+      // Insert offer into database
+      const { data, error } = await supabase
+        .from("offers")
+        .insert([offerData])
+        .select()
+        .single()
+
+      if (error) {
+        console.error('Database error:', error)
+        throw new Error(`Failed to create offer: ${error.message}`)
+      }
+
+      if (data) {
+        setSuccess(true)
+        toast({
+          title: "Offer created successfully",
+          description: "The offer has been added to the database.",
+        })
+        
+        // Reset form
+        form.reset()
+        setSelectedImage(null)
+        setImagePreview(null)
+        
+        // Redirect to offers list after a short delay
+        setTimeout(() => {
+          router.push("/company/offers")
+        }, 2000)
+      }
     } catch (error) {
-      toast.error("Failed to create offer. Please try again.")
+      console.error("Error:", error)
+      const errorMessage = error instanceof Error ? error.message : "Something went wrong. Please try again."
+      setErrorMsg(errorMessage)
+      toast({
+        title: "Error creating offer",
+        description: errorMessage,
+        variant: "destructive",
+      })
     } finally {
-      setIsSubmitting(false)
+      setIsLoading(false)
     }
   }
 
   return (
-    <div className="container max-w-4xl mx-auto py-8 px-4 md:px-6">
-      <div className="space-y-8">
-        <div className="flex items-center gap-4 mb-8">
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => router.back()}
-            className="rounded-full hover:bg-blue-50 dark:hover:bg-blue-950"
-          >
-            <ArrowLeft className="h-5 w-5 text-blue-600" />
-          </Button>
-          <div>
-            <h1 className="text-4xl font-bold tracking-tight bg-gradient-to-r from-blue-600 to-blue-400 bg-clip-text text-transparent">
-              Create New Offer
-            </h1>
-            <p className="text-muted-foreground text-lg mt-1">
-              Create an attractive offer that your employees will love.
-            </p>
-          </div>
+    <div className="container mx-auto px-4 md:px-6 py-8">
+      <div className="flex items-center gap-4 mb-8">
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={() => router.back()}
+          className="h-8 w-8"
+        >
+          <ArrowLeft className="h-4 w-4" />
+        </Button>
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">Create New Offer</h1>
+          <p className="text-muted-foreground">
+            Add a new offer for your partners
+          </p>
         </div>
+      </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-          {steps.map((step, index) => {
-            const IconComponent = step.icon
-            return (
-              <Card 
-                key={step.title}
-                className={cn(
-                  "relative cursor-pointer transition-all duration-200",
-                  step.complete ? `bg-gradient-to-br from-${step.color}-50 to-white dark:from-${step.color}-950 dark:to-background border-${step.color}-200 dark:border-${step.color}-800` : "bg-gray-50 dark:bg-gray-900",
-                  currentStep === index + 1 && "ring-2 ring-blue-500 dark:ring-blue-400"
-                )}
-                onClick={() => setCurrentStep(index + 1)}
-              >
-                <CardHeader className="space-y-1">
-                  <div className={cn(
-                    "w-12 h-12 rounded-full flex items-center justify-center mb-2",
-                    step.complete ? `bg-${step.color}-100 dark:bg-${step.color}-900` : "bg-gray-100 dark:bg-gray-800"
-                  )}>
-                    {step.complete ? (
-                      <Check className={`w-6 h-6 text-${step.color}-600 dark:text-${step.color}-400`} />
-                    ) : (
-                      <IconComponent className={`w-6 h-6 ${currentStep === index + 1 ? `text-${step.color}-600 dark:text-${step.color}-400` : "text-gray-400"}`} />
-                    )}
-                  </div>
-                  <CardTitle className={cn(
-                    "text-xl",
-                    step.complete && `text-${step.color}-600 dark:text-${step.color}-400`
-                  )}>
-                    {step.title}
-                  </CardTitle>
-                  <CardDescription>
-                    {step.description}
-                  </CardDescription>
-                </CardHeader>
-                {step.complete && (
-                  <div className="absolute top-3 right-3">
-                    <Check className={`w-5 h-5 text-${step.color}-600 dark:text-${step.color}-400`} />
-                  </div>
-                )}
-              </Card>
-            )
-          })}
-        </div>
-
-        <Card className="border-2">
+      <div className="max-w-7xl mx-auto">
+        <Card>
           <CardHeader>
-            <CardTitle className="text-2xl">Offer Information</CardTitle>
+            <CardTitle>Offer Information</CardTitle>
             <CardDescription>
-              Fill in the details of your new offer carefully.
+              Fill in the details to create a new offer
             </CardDescription>
           </CardHeader>
           <CardContent>
             <Form {...form}>
               <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
-                <div className="space-y-8">
-                  <div className="border rounded-lg p-6 space-y-6 bg-slate-50 dark:bg-slate-950">
-                    <h3 className="text-lg font-semibold flex items-center gap-2 text-blue-600 dark:text-blue-400">
-                      <Tag className="h-5 w-5" />
-                      Basic Details
-                    </h3>
-                    <div className="grid gap-6">
-                      <FormField
-                        control={form.control}
-                        name="title"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel className="text-base">Offer Title</FormLabel>
-                            <FormControl>
-                              <Input 
-                                placeholder="e.g., 20% off on Electronics" 
-                                {...field}
-                                className="h-11"
-                              />
-                            </FormControl>
-                            <FormDescription>
-                              A clear and concise title for your offer
-                            </FormDescription>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-
-                      <FormField
-                        control={form.control}
-                        name="description"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel className="text-base">Description</FormLabel>
-                            <FormControl>
-                              <Textarea
-                                placeholder="Describe the offer in detail..."
-                                className="resize-none min-h-[120px]"
-                                {...field}
-                              />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
+                <div className="grid gap-8">
+                  {/* Partner Selection */}
+                  <div className="space-y-4 p-6 bg-muted/50 rounded-lg">
+                    <div className="flex items-center gap-2">
+                      <Users className="h-5 w-5 text-primary" />
+                      <h3 className="text-lg font-medium">Partner Company</h3>
                     </div>
+                    <FormField
+                      control={form.control}
+                      name="partner_id"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Select Partner</FormLabel>
+                          <Select 
+                            onValueChange={field.onChange} 
+                            value={field.value || ""}
+                          >
+                            <FormControl>
+                              <SelectTrigger className="h-11">
+                                <SelectValue placeholder="Select partner company" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              {partners.map((partner) => (
+                                <SelectItem key={partner.id} value={partner.id}>
+                                  {partner.company_name}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
                   </div>
 
-                  <div className="border rounded-lg p-6 space-y-6 bg-purple-50 dark:bg-purple-950/30">
-                    <h3 className="text-lg font-semibold flex items-center gap-2 text-purple-600 dark:text-purple-400">
-                      <Percent className="h-5 w-5" />
-                      Discount Information
-                    </h3>
-                    <div className="grid gap-6 md:grid-cols-2">
-                      <FormField
-                        control={form.control}
-                        name="category"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel className="text-base">Category</FormLabel>
-                            <Select onValueChange={field.onChange} defaultValue={field.value}>
-                              <FormControl>
-                                <SelectTrigger className="h-11">
-                                  <SelectValue placeholder="Select category" />
-                                </SelectTrigger>
-                              </FormControl>
-                              <SelectContent>
-                                {categories.map((category) => (
-                                  <SelectItem 
-                                    key={category.id} 
-                                    value={category.id}
-                                    className="flex items-center gap-2"
-                                  >
-                                    <span>{category.icon}</span>
-                                    {category.name}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
+                  {/* Main Form Content in 3 Columns */}
+                  <div className="grid gap-8 md:grid-cols-3">
+                    {/* Left Column */}
+                    <div className="space-y-8">
+                      {/* Title and Description */}
+                      <div className="space-y-4 p-6 bg-muted/50 rounded-lg">
+                        <div className="flex items-center gap-2">
+                          <Tag className="h-5 w-5 text-primary" />
+                          <h3 className="text-lg font-medium">Offer Details</h3>
+                        </div>
+                        <div className="space-y-4">
+                          <FormField
+                            control={form.control}
+                            name="title"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>Title</FormLabel>
+                                <FormControl>
+                                  <Input 
+                                    placeholder="Enter offer title" 
+                                    {...field} 
+                                    value={field.value || ""}
+                                    className="h-11"
+                                  />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
 
-                      <FormField
-                        control={form.control}
-                        name="discountType"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel className="text-base">Discount Type</FormLabel>
-                            <Select onValueChange={field.onChange} defaultValue={field.value}>
-                              <FormControl>
-                                <SelectTrigger className="h-11">
-                                  <SelectValue placeholder="Select type" />
-                                </SelectTrigger>
-                              </FormControl>
-                              <SelectContent>
-                                <SelectItem value="percentage">Percentage (%)</SelectItem>
-                                <SelectItem value="fixed">Fixed Amount (₹)</SelectItem>
-                              </SelectContent>
-                            </Select>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
+                          <FormField
+                            control={form.control}
+                            name="description"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>Description</FormLabel>
+                                <FormControl>
+                                  <Textarea
+                                    placeholder="Enter offer description"
+                                    className="min-h-[120px] resize-none"
+                                    {...field}
+                                    value={field.value || ""}
+                                  />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                        </div>
+                      </div>
 
-                      <FormField
-                        control={form.control}
-                        name="discountValue"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel className="text-base">Discount Value</FormLabel>
-                            <FormControl>
-                              <div className="relative">
-                                <Input
-                                  type="number"
-                                  placeholder={form.watch("discountType") === "percentage" ? "20" : "1000"}
-                                  className="h-11 pr-8"
+                      {/* Category */}
+                      <div className="space-y-4 p-6 bg-muted/50 rounded-lg">
+                        <div className="flex items-center gap-2">
+                          <Tag className="h-5 w-5 text-primary" />
+                          <h3 className="text-lg font-medium">Category</h3>
+                        </div>
+                        <FormField
+                          control={form.control}
+                          name="category"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Select Category</FormLabel>
+                              <Select 
+                                onValueChange={field.onChange} 
+                                value={field.value || ""}
+                              >
+                                <FormControl>
+                                  <SelectTrigger className="h-11">
+                                    <SelectValue placeholder="Select category" />
+                                  </SelectTrigger>
+                                </FormControl>
+                                <SelectContent>
+                                  {categories.map((category) => (
+                                    <SelectItem key={category} value={category}>
+                                      {category}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                      </div>
+                    </div>
+
+                    {/* Middle Column */}
+                    <div className="space-y-8">
+                      {/* Discount Information */}
+                      <div className="space-y-4 p-6 bg-muted/50 rounded-lg">
+                        <div className="flex items-center gap-2">
+                          <Percent className="h-5 w-5 text-primary" />
+                          <h3 className="text-lg font-medium">Discount Information</h3>
+                        </div>
+                        <div className="space-y-4">
+                          <FormField
+                            control={form.control}
+                            name="discountType"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>Discount Type</FormLabel>
+                                <Select 
+                                  onValueChange={field.onChange} 
+                                  value={field.value || ""}
+                                >
+                                  <FormControl>
+                                    <SelectTrigger className="h-11">
+                                      <SelectValue placeholder="Select discount type" />
+                                    </SelectTrigger>
+                                  </FormControl>
+                                  <SelectContent>
+                                    {discountTypes.map((type) => (
+                                      <SelectItem key={type} value={type}>
+                                        {type}
+                                      </SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+
+                          <FormField
+                            control={form.control}
+                            name="discountValue"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>Discount Value</FormLabel>
+                                <FormControl>
+                                  <Input 
+                                    type="text" 
+                                    placeholder="Enter discount value" 
+                                    {...field} 
+                                    value={field.value || ""}
+                                    className="h-11"
+                                  />
+                                </FormControl>
+                                <FormDescription>
+                                  Enter percentage (e.g., 20%) or fixed amount (e.g., $50)
+                                </FormDescription>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                        </div>
+                      </div>
+
+                      {/* Validity Period */}
+                      <div className="space-y-4 p-6 bg-muted/50 rounded-lg">
+                        <div className="flex items-center gap-2">
+                          <Calendar className="h-5 w-5 text-primary" />
+                          <h3 className="text-lg font-medium">Validity Period</h3>
+                        </div>
+                        <div className="space-y-4">
+                          <FormField
+                            control={form.control}
+                            name="startDate"
+                            render={({ field }) => (
+                              <FormItem className="flex flex-col">
+                                <FormLabel>Start Date</FormLabel>
+                                <Popover>
+                                  <PopoverTrigger asChild>
+                                    <FormControl>
+                                      <Button
+                                        variant="outline"
+                                        className={cn(
+                                          "w-full h-11 pl-3 text-left font-normal",
+                                          !field.value && "text-muted-foreground"
+                                        )}
+                                      >
+                                        {field.value ? (
+                                          format(field.value, "PPP")
+                                        ) : (
+                                          <span>Pick a date</span>
+                                        )}
+                                        <Calendar className="ml-auto h-4 w-4 opacity-50" />
+                                      </Button>
+                                    </FormControl>
+                                  </PopoverTrigger>
+                                  <PopoverContent className="w-auto p-0" align="start">
+                                    <CalendarComponent
+                                      mode="single"
+                                      selected={field.value}
+                                      onSelect={field.onChange}
+                                      disabled={(date) =>
+                                        date < new Date() || date < new Date("1900-01-01")
+                                      }
+                                      initialFocus
+                                    />
+                                  </PopoverContent>
+                                </Popover>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+
+                          <FormField
+                            control={form.control}
+                            name="endDate"
+                            render={({ field }) => (
+                              <FormItem className="flex flex-col">
+                                <FormLabel>End Date</FormLabel>
+                                <Popover>
+                                  <PopoverTrigger asChild>
+                                    <FormControl>
+                                      <Button
+                                        variant="outline"
+                                        className={cn(
+                                          "w-full h-11 pl-3 text-left font-normal",
+                                          !field.value && "text-muted-foreground"
+                                        )}
+                                      >
+                                        {field.value ? (
+                                          format(field.value, "PPP")
+                                        ) : (
+                                          <span>Pick a date</span>
+                                        )}
+                                        <Calendar className="ml-auto h-4 w-4 opacity-50" />
+                                      </Button>
+                                    </FormControl>
+                                  </PopoverTrigger>
+                                  <PopoverContent className="w-auto p-0" align="start">
+                                    <CalendarComponent
+                                      mode="single"
+                                      selected={field.value}
+                                      onSelect={field.onChange}
+                                      disabled={(date) =>
+                                        date < new Date() || date < new Date("1900-01-01")
+                                      }
+                                      initialFocus
+                                    />
+                                  </PopoverContent>
+                                </Popover>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Right Column */}
+                    <div className="space-y-8">
+                      {/* Terms and Conditions */}
+                      <div className="space-y-4 p-6 bg-muted/50 rounded-lg">
+                        <div className="flex items-center gap-2">
+                          <FileText className="h-5 w-5 text-primary" />
+                          <h3 className="text-lg font-medium">Terms & Conditions</h3>
+                        </div>
+                        <FormField
+                          control={form.control}
+                          name="terms"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Terms and Conditions</FormLabel>
+                              <FormControl>
+                                <Textarea
+                                  placeholder="Enter terms and conditions"
+                                  className="min-h-[200px] resize-none"
                                   {...field}
+                                  value={field.value || ""}
                                 />
-                                <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
-                                  <span className="text-muted-foreground">
-                                    {form.watch("discountType") === "percentage" ? "%" : "₹"}
-                                  </span>
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                      </div>
+
+                      {/* Image Upload */}
+                      <div className="space-y-4 p-6 bg-muted/50 rounded-lg">
+                        <div className="flex items-center gap-2">
+                          <ImageIcon className="h-5 w-5 text-primary" />
+                          <h3 className="text-lg font-medium">Offer Image</h3>
+                        </div>
+                        <FormField
+                          control={form.control}
+                          name="image"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Upload Image</FormLabel>
+                              <FormControl>
+                                <div className="space-y-4">
+                                  {imagePreview ? (
+                                    <div className="relative">
+                                      <div className="relative w-full h-48 rounded-lg overflow-hidden">
+                                        <Image
+                                          src={imagePreview}
+                                          alt="Preview"
+                                          fill
+                                          className="object-cover"
+                                        />
+                                      </div>
+                                      <Button
+                                        type="button"
+                                        variant="destructive"
+                                        size="icon"
+                                        className="absolute top-2 right-2"
+                                        onClick={removeImage}
+                                      >
+                                        <X className="h-4 w-4" />
+                                      </Button>
+                                    </div>
+                                  ) : (
+                                    <div className="flex items-center justify-center w-full">
+                                      <label
+                                        htmlFor="image-upload"
+                                        className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed rounded-lg cursor-pointer bg-background hover:bg-muted/50"
+                                      >
+                                        <div className="flex flex-col items-center justify-center pt-5 pb-6">
+                                          <Upload className="w-8 h-8 mb-3 text-muted-foreground" />
+                                          <p className="mb-2 text-sm text-muted-foreground">
+                                            <span className="font-semibold">Click to upload</span> or drag and drop
+                                          </p>
+                                          <p className="text-xs text-muted-foreground">
+                                            PNG, JPG or GIF (MAX. 2MB)
+                                          </p>
+                                        </div>
+                                        <input
+                                          id="image-upload"
+                                          type="file"
+                                          className="hidden"
+                                          accept="image/*"
+                                          onChange={handleImageChange}
+                                        />
+                                      </label>
+                                    </div>
+                                  )}
                                 </div>
-                              </div>
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-
-                      <FormField
-                        control={form.control}
-                        name="redemptionLimit"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel className="text-base">Redemption Limit</FormLabel>
-                            <FormControl>
-                              <Input 
-                                type="number" 
-                                placeholder="100" 
-                                className="h-11"
-                                {...field} 
-                              />
-                            </FormControl>
-                            <FormDescription>
-                              Maximum number of times this offer can be used
-                            </FormDescription>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                    </div>
-                  </div>
-
-                  <div className="border rounded-lg p-6 space-y-6 bg-green-50 dark:bg-green-950/30">
-                    <h3 className="text-lg font-semibold flex items-center gap-2 text-green-600 dark:text-green-400">
-                      <Clock className="h-5 w-5" />
-                      Validity Period
-                    </h3>
-                    <div className="grid gap-6 md:grid-cols-2">
-                      <FormField
-                        control={form.control}
-                        name="validFrom"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel className="text-base">Valid From</FormLabel>
-                            <FormControl>
-                              <Input 
-                                type="date" 
-                                className="h-11"
-                                {...field} 
-                              />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-
-                      <FormField
-                        control={form.control}
-                        name="validUntil"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel className="text-base">Valid Until</FormLabel>
-                            <FormControl>
-                              <Input 
-                                type="date" 
-                                className="h-11"
-                                {...field} 
-                              />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                    </div>
-                  </div>
-
-                  <div className="border rounded-lg p-6 space-y-6 bg-blue-50 dark:bg-blue-950/30">
-                    <h3 className="text-lg font-semibold flex items-center gap-2 text-blue-600 dark:text-blue-400">
-                      <FileText className="h-5 w-5" />
-                      Terms and Conditions
-                    </h3>
-                    <div className="space-y-2">
-                      <FormField
-                        control={form.control}
-                        name="termsAndConditions"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel className="text-base">Terms and Conditions</FormLabel>
-                            <FormControl>
-                              <Textarea
-                                placeholder="Specify the terms, conditions, and any restrictions that apply to this offer..."
-                                className="resize-none min-h-[200px]"
-                                {...field}
-                              />
-                            </FormControl>
-                            <FormDescription>
-                              Clearly outline usage restrictions, eligibility criteria, and any other important conditions
-                            </FormDescription>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                    </div>
-                  </div>
-
-                  <div className="border rounded-lg p-6 space-y-6 bg-slate-50 dark:bg-slate-900">
-                    <h3 className="text-lg font-semibold flex items-center gap-2 text-slate-600 dark:text-slate-300">
-                      <Tag className="h-5 w-5" />
-                      Additional Information
-                    </h3>
-                    <div className="space-y-6">
-                      <FormField
-                        control={form.control}
-                        name="promoCode"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel className="text-base">Promo Code (Optional)</FormLabel>
-                            <FormControl>
-                              <Input 
-                                placeholder="SUMMER2024" 
-                                className="h-11"
-                                {...field} 
-                              />
-                            </FormControl>
-                            <FormDescription>
-                              Leave empty to auto-generate a code
-                            </FormDescription>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
+                              </FormControl>
+                              <FormDescription>
+                                Upload an image for the offer (optional)
+                              </FormDescription>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -475,7 +703,6 @@ export default function CreateOfferPage() {
                   <Button
                     type="button"
                     variant="outline"
-                    size="lg"
                     onClick={() => router.back()}
                     className="min-w-[120px]"
                   >
@@ -483,20 +710,22 @@ export default function CreateOfferPage() {
                   </Button>
                   <Button 
                     type="submit" 
-                    size="lg"
-                    disabled={isSubmitting}
-                    className="min-w-[120px] bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-500 hover:to-blue-600"
+                    disabled={isLoading}
+                    className="min-w-[120px]"
                   >
-                    {isSubmitting ? (
-                      <>
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        Creating...
-                      </>
-                    ) : (
-                      "Create Offer"
-                    )}
+                    {isLoading ? "Creating..." : "Create Offer"}
                   </Button>
                 </div>
+                {success && (
+                  <div className="text-green-600 text-center mt-2">
+                    ✅ Offer created successfully!
+                  </div>
+                )}
+                {errorMsg && (
+                  <div className="text-red-600 text-center mt-2">
+                    ❌ {errorMsg}
+                  </div>
+                )}
               </form>
             </Form>
           </CardContent>

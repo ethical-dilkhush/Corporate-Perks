@@ -6,6 +6,8 @@ import { zodResolver } from "@hookform/resolvers/zod"
 import { useForm } from "react-hook-form"
 import * as z from "zod"
 import { Building2, ArrowLeft, Upload } from "lucide-react"
+import { useToast } from "@/hooks/use-toast"
+import { supabase } from "@/lib/supabase"
 
 import { Button } from "@/components/ui/button"
 import {
@@ -27,22 +29,24 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { toast } from "sonner"
 
 const formSchema = z.object({
   companyName: z.string().min(2, "Company name must be at least 2 characters"),
   email: z.string().email("Please enter a valid email address"),
   phone: z.string().min(10, "Please enter a valid phone number"),
   website: z.string().url("Please enter a valid website URL").optional(),
-  category: z.string().min(1, "Please select a category"),
-  description: z.string().min(10, "Description must be at least 10 characters"),
+  businessType: z.string().min(1, "Please select a business type"),
+  additionalNote: z.string().min(10, "Additional note must be at least 10 characters"),
   address: z.string().min(5, "Please enter a valid address"),
   city: z.string().min(2, "Please enter a valid city"),
   state: z.string().min(2, "Please enter a valid state"),
   zipCode: z.string().min(5, "Please enter a valid ZIP code"),
+  employeeCount: z.string().min(1, "Please enter employee count"),
+  partnershipType: z.string().min(1, "Please select a partnership type"),
+  logo: z.any().optional(),
 })
 
-const categories = [
+const businessTypes = [
   "Electronics",
   "Fashion & Apparel",
   "Food & Dining",
@@ -54,9 +58,21 @@ const categories = [
   "Other",
 ]
 
+const partnershipTypes = [
+  "Exclusive",
+  "Preferred",
+  "Standard",
+  "Trial",
+]
+
 export default function NewPartnerPage() {
   const router = useRouter()
+  const { toast } = useToast()
   const [isLoading, setIsLoading] = useState(false)
+  const [success, setSuccess] = useState(false)
+  const [errorMsg, setErrorMsg] = useState("")
+  const [logoPreview, setLogoPreview] = useState<string | null>(null)
+  const [selectedFile, setSelectedFile] = useState<File | null>(null)
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -65,24 +81,140 @@ export default function NewPartnerPage() {
       email: "",
       phone: "",
       website: "",
-      category: "",
-      description: "",
+      businessType: "",
+      additionalNote: "",
       address: "",
       city: "",
       state: "",
       zipCode: "",
+      employeeCount: "",
+      partnershipType: "",
+      logo: null,
     },
   })
 
+  const handleLogoChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (file) {
+      // Validate file type
+      if (!file.type.startsWith('image/')) {
+        toast({
+          title: "Invalid file type",
+          description: "Please upload an image file",
+          variant: "destructive",
+        })
+        return
+      }
+
+      // Validate file size (2MB limit)
+      if (file.size > 2 * 1024 * 1024) {
+        toast({
+          title: "File too large",
+          description: "Please upload an image smaller than 2MB",
+          variant: "destructive",
+        })
+        return
+      }
+
+      // Create preview
+      const reader = new FileReader()
+      reader.onloadend = () => {
+        setLogoPreview(reader.result as string)
+      }
+      reader.readAsDataURL(file)
+
+      // Store file
+      setSelectedFile(file)
+    }
+  }
+
   async function onSubmit(values: z.infer<typeof formSchema>) {
     setIsLoading(true)
+    setSuccess(false)
+    setErrorMsg("")
+    
     try {
-      // Here you would typically make an API call to create the partner
-      console.log(values)
-      toast.success("Partner added successfully!")
-      router.push("/company/partners")
+      let imageUrl = null
+      
+      // Upload logo if present
+      if (selectedFile) {
+        try {
+          const fileExt = selectedFile.name.split('.').pop()
+          const fileName = `${Math.random().toString(36).substring(2)}.${fileExt}`
+          const filePath = `partners/${fileName}`
+
+          console.log('Attempting to upload logo to path:', filePath)
+
+          // Create form data
+          const formData = new FormData()
+          formData.append('file', selectedFile)
+
+          // Upload logo using the API route
+          const response = await fetch('/api/upload/partner-logo', {
+            method: 'POST',
+            body: formData,
+          })
+
+          if (!response.ok) {
+            const errorData = await response.json()
+            throw new Error(errorData.error || 'Failed to upload logo')
+          }
+
+          const { url } = await response.json()
+          console.log('Logo uploaded successfully, URL:', url)
+          imageUrl = url
+        } catch (uploadError) {
+          console.error('File upload error:', uploadError)
+          throw new Error(`Failed to upload image: ${uploadError instanceof Error ? uploadError.message : 'Unknown error'}`)
+        }
+      }
+
+      const partnerData = {
+        company_name: values.companyName,
+        business_type: values.businessType,
+        website: values.website || null,
+        additional_note: values.additionalNote,
+        email: values.email,
+        phone: values.phone,
+        address: values.address,
+        city: values.city,
+        state: values.state,
+        pincode: values.zipCode,
+        employee_count: values.employeeCount,
+        partnership_type: values.partnershipType,
+        image_url: imageUrl,
+        created_at: new Date().toISOString(),
+      }
+
+      const { error, data } = await supabase
+        .from("partners")
+        .insert([partnerData])
+        .select()
+
+      if (error) {
+        console.error('Database error:', error)
+        throw new Error(`Failed to insert partner: ${error.message}`)
+      }
+
+      if (data) {
+        setSuccess(true)
+        toast({
+          title: "Partner added",
+          description: "Your partner has been added successfully!",
+        })
+        form.reset()
+        setLogoPreview(null)
+        setSelectedFile(null)
+      }
     } catch (error) {
-      toast.error("Something went wrong. Please try again.")
+      console.error("Error:", error)
+      const errorMessage = error instanceof Error ? error.message : "Something went wrong. Please try again."
+      setErrorMsg(errorMessage)
+      toast({
+        title: "Error",
+        description: errorMessage,
+        variant: "destructive",
+      })
     } finally {
       setIsLoading(false)
     }
@@ -126,7 +258,11 @@ export default function NewPartnerPage() {
                       <FormItem>
                         <FormLabel>Company Name</FormLabel>
                         <FormControl>
-                          <Input placeholder="Enter company name" {...field} />
+                          <Input 
+                            placeholder="Enter company name" 
+                            {...field} 
+                            value={field.value || ""}
+                          />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -135,20 +271,23 @@ export default function NewPartnerPage() {
 
                   <FormField
                     control={form.control}
-                    name="category"
+                    name="businessType"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Category</FormLabel>
-                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                        <FormLabel>Business Type</FormLabel>
+                        <Select 
+                          onValueChange={field.onChange} 
+                          value={field.value || ""}
+                        >
                           <FormControl>
                             <SelectTrigger>
-                              <SelectValue placeholder="Select category" />
+                              <SelectValue placeholder="Select business type" />
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
-                            {categories.map((category) => (
-                              <SelectItem key={category} value={category}>
-                                {category}
+                            {businessTypes.map((type) => (
+                              <SelectItem key={type} value={type}>
+                                {type}
                               </SelectItem>
                             ))}
                           </SelectContent>
@@ -167,7 +306,12 @@ export default function NewPartnerPage() {
                       <FormItem>
                         <FormLabel>Email</FormLabel>
                         <FormControl>
-                          <Input type="email" placeholder="Enter email address" {...field} />
+                          <Input 
+                            type="email" 
+                            placeholder="Enter email address" 
+                            {...field} 
+                            value={field.value || ""}
+                          />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -181,8 +325,62 @@ export default function NewPartnerPage() {
                       <FormItem>
                         <FormLabel>Phone</FormLabel>
                         <FormControl>
-                          <Input type="tel" placeholder="Enter phone number" {...field} />
+                          <Input 
+                            type="tel" 
+                            placeholder="Enter phone number" 
+                            {...field} 
+                            value={field.value || ""}
+                          />
                         </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+
+                <div className="grid gap-4 md:grid-cols-2">
+                  <FormField
+                    control={form.control}
+                    name="employeeCount"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Number of Employees</FormLabel>
+                        <FormControl>
+                          <Input 
+                            type="number" 
+                            placeholder="Enter number of employees" 
+                            {...field} 
+                            value={field.value || ""}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="partnershipType"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Partnership Type</FormLabel>
+                        <Select 
+                          onValueChange={field.onChange} 
+                          value={field.value || ""}
+                        >
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select partnership type" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            {partnershipTypes.map((type) => (
+                              <SelectItem key={type} value={type}>
+                                {type}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
                         <FormMessage />
                       </FormItem>
                     )}
@@ -196,7 +394,11 @@ export default function NewPartnerPage() {
                     <FormItem>
                       <FormLabel>Website</FormLabel>
                       <FormControl>
-                        <Input placeholder="https://example.com" {...field} />
+                        <Input 
+                          placeholder="https://example.com" 
+                          {...field} 
+                          value={field.value || ""}
+                        />
                       </FormControl>
                       <FormDescription>
                         Optional - Enter the company's website URL
@@ -208,15 +410,16 @@ export default function NewPartnerPage() {
 
                 <FormField
                   control={form.control}
-                  name="description"
+                  name="additionalNote"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Description</FormLabel>
+                      <FormLabel>Additional Note</FormLabel>
                       <FormControl>
                         <Textarea
-                          placeholder="Enter a brief description of the company"
+                          placeholder="Enter additional notes about the company"
                           className="min-h-[100px]"
                           {...field}
+                          value={field.value || ""}
                         />
                       </FormControl>
                       <FormMessage />
@@ -297,6 +500,16 @@ export default function NewPartnerPage() {
                     {isLoading ? "Adding..." : "Add Partner"}
                   </Button>
                 </div>
+                {success && (
+                  <div className="text-green-600 text-center mt-2">
+                    ✅ Partner added successfully!
+                  </div>
+                )}
+                {errorMsg && (
+                  <div className="text-red-600 text-center mt-2">
+                    ❌ {errorMsg}
+                  </div>
+                )}
               </form>
             </Form>
           </CardContent>
@@ -307,21 +520,55 @@ export default function NewPartnerPage() {
             <CardHeader>
               <CardTitle>Upload Logo</CardTitle>
               <CardDescription>
-                Add the partner company's logo
+                Add the partner company's logo (optional)
               </CardDescription>
             </CardHeader>
             <CardContent>
               <div className="flex flex-col items-center justify-center gap-4 p-6 border-2 border-dashed rounded-lg">
-                <Upload className="h-8 w-8 text-muted-foreground" />
-                <div className="text-center">
-                  <p className="text-sm font-medium">Drop logo here or click to upload</p>
-                  <p className="text-xs text-muted-foreground">
-                    PNG, JPG up to 2MB
-                  </p>
-                </div>
-                <Button variant="outline" size="sm">
-                  Select File
-                </Button>
+                {logoPreview ? (
+                  <div className="relative w-full max-w-[200px]">
+                    <img
+                      src={logoPreview}
+                      alt="Logo preview"
+                      className="w-full h-auto rounded-lg"
+                    />
+                    <Button
+                      variant="destructive"
+                      size="sm"
+                      className="absolute -top-2 -right-2"
+                      onClick={() => {
+                        setLogoPreview(null)
+                        setSelectedFile(null)
+                      }}
+                    >
+                      ×
+                    </Button>
+                  </div>
+                ) : (
+                  <>
+                    <Upload className="h-8 w-8 text-muted-foreground" />
+                    <div className="text-center">
+                      <p className="text-sm font-medium">Drop logo here or click to upload</p>
+                      <p className="text-xs text-muted-foreground">
+                        PNG, JPG up to 2MB
+                      </p>
+                    </div>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      id="logo-upload"
+                      onChange={handleLogoChange}
+                    />
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => document.getElementById('logo-upload')?.click()}
+                    >
+                      Select File
+                    </Button>
+                  </>
+                )}
               </div>
             </CardContent>
           </Card>
