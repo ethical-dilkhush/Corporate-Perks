@@ -32,7 +32,7 @@ export function VerifyOtpForm() {
 
       // Redirect based on role from URL
       if (role === "company") {
-        router.push("/company/dashboard")
+        router.push("/company")
       } else if (role === "admin") {
         router.push("/admin/dashboard")
       } else {

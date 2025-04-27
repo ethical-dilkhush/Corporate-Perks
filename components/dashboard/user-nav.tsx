@@ -24,16 +24,25 @@ export function UserNav() {
   const router = useRouter()
   const { toast } = useToast()
 
-  const handleLogout = () => {
-    // In a real implementation, this would call your API to logout
-    // await fetch("/api/auth/logout", { method: "POST" })
-
-    toast({
-      title: "Logged out",
-      description: "You have been logged out successfully",
-    })
-
-    router.push("/")
+  const handleLogout = async () => {
+    try {
+      const response = await fetch("/api/auth/logout", { method: "POST" })
+      if (response.ok) {
+        toast({
+          title: "Logged out",
+          description: "You have been logged out successfully",
+        })
+        router.push("/auth/login")
+      } else {
+        throw new Error("Logout failed")
+      }
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to log out. Please try again.",
+        variant: "destructive",
+      })
+    }
   }
 
   return (

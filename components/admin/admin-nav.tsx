@@ -3,10 +3,16 @@
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { cn } from "@/lib/utils"
-import { Button } from "@/components/ui/button"
-import { LayoutDashboard, Building, Users, Tag, Ticket, Settings } from "lucide-react"
+import {
+  LayoutDashboard,
+  Building2,
+  Users,
+  Tag,
+  Ticket,
+  Settings,
+} from "lucide-react"
 
-const navItems = [
+const items = [
   {
     title: "Dashboard",
     href: "/admin/dashboard",
@@ -15,7 +21,7 @@ const navItems = [
   {
     title: "Companies",
     href: "/admin/companies",
-    icon: Building,
+    icon: Building2,
   },
   {
     title: "Users",
@@ -43,15 +49,25 @@ export function AdminNav() {
   const pathname = usePathname()
 
   return (
-    <nav className="grid items-start gap-2 py-6">
-      {navItems.map((item) => (
-        <Link key={item.href} href={item.href}>
-          <Button variant="ghost" className={cn("w-full justify-start", pathname === item.href && "bg-muted")}>
-            <item.icon className="mr-2 h-4 w-4" />
-            {item.title}
-          </Button>
-        </Link>
-      ))}
+    <nav className="flex items-center space-x-4">
+      {items.map((item) => {
+        const Icon = item.icon
+        return (
+          <Link
+            key={item.href}
+            href={item.href}
+            className={cn(
+              "flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground",
+              pathname === item.href
+                ? "bg-accent text-accent-foreground"
+                : "transparent"
+            )}
+          >
+            <Icon className="h-4 w-4" />
+            <span>{item.title}</span>
+          </Link>
+        )
+      })}
     </nav>
   )
 }
