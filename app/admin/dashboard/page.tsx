@@ -7,6 +7,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import Link from "next/link";
+import { formatNumber } from "@/lib/utils"
 
 // Mock data for companies
 const initialCompanies = [
@@ -45,6 +46,21 @@ export default function AdminDashboardPage() {
   });
   const [success, setSuccess] = useState(false);
   const [formError, setFormError] = useState('');
+
+  // Mock data for statistics
+  const stats = {
+    totalCompanies: companies.length,
+    activeCompanies: companies.filter(c => c.status === "Active").length,
+    pendingCompanies: companies.filter(c => c.status === "Pending").length,
+    totalEmployees: 1284,
+    activeEmployees: 1023,
+    totalOffers: 24,
+    activeOffers: 20,
+    totalCoupons: 3891,
+    redeemedCoupons: 2456,
+    totalRevenue: 125000,
+    monthlyRevenue: 25000,
+  };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setForm({ ...form, [e.target.name]: e.target.value });
@@ -90,9 +106,12 @@ export default function AdminDashboardPage() {
   };
 
   return (
-    <div className="flex-1 space-y-6 p-8 pt-6">
-      <div className="flex items-center justify-between space-y-2">
-        <h2 className="text-3xl font-bold tracking-tight">Admin Dashboard</h2>
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-2xl font-bold tracking-tight">Dashboard Overview</h2>
+          <p className="text-muted-foreground">Welcome back! Here's what's happening today.</p>
+        </div>
         <div className="flex items-center space-x-2">
           <Link href="/admin/companies/new">
             <Button
@@ -104,77 +123,104 @@ export default function AdminDashboardPage() {
           </Link>
         </div>
       </div>
-      {/* Stat Cards */}
-      <div className="grid gap-6 md:grid-cols-4">
-        <Card className="w-full min-w-[220px] p-4 bg-blue-100 hover:bg-blue-200 hover:shadow-xl hover:scale-105 transition-all duration-200 border-0">
+
+      {/* Overview Cards */}
+      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+        <Card className="w-full min-w-[220px] p-4 bg-gradient-to-br from-blue-50 to-blue-100 hover:shadow-xl hover:scale-105 transition-all duration-200 border-0">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Total Companies</CardTitle>
             <Building className="h-4 w-4 text-blue-700" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-blue-900">{companies.length}</div>
-            <p className="text-xs text-blue-800">+2 this month</p>
+            <div className="text-2xl font-bold text-blue-900">{stats.totalCompanies}</div>
+            <div className="flex items-center space-x-2 mt-2">
+              <span className="text-xs text-blue-800">Active: {stats.activeCompanies}</span>
+              <span className="text-xs text-yellow-800">Pending: {stats.pendingCompanies}</span>
+            </div>
           </CardContent>
         </Card>
-        <Card className="w-full min-w-[220px] p-4 bg-green-100 hover:bg-green-200 hover:shadow-xl hover:scale-105 transition-all duration-200 border-0">
+
+        <Card className="w-full min-w-[220px] p-4 bg-gradient-to-br from-green-50 to-green-100 hover:shadow-xl hover:scale-105 transition-all duration-200 border-0">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Users</CardTitle>
+            <CardTitle className="text-sm font-medium">Total Employees</CardTitle>
             <Users className="h-4 w-4 text-green-700" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-green-900">1,284</div>
-            <p className="text-xs text-green-800">+16% from last month</p>
+            <div className="text-2xl font-bold text-green-900">{stats.totalEmployees}</div>
+            <div className="flex items-center space-x-2 mt-2">
+              <span className="text-xs text-green-800">Active: {stats.activeEmployees}</span>
+              <span className="text-xs text-gray-800">+16% from last month</span>
+            </div>
           </CardContent>
         </Card>
-        <Card className="w-full min-w-[220px] p-4 bg-yellow-100 hover:bg-yellow-200 hover:shadow-xl hover:scale-105 transition-all duration-200 border-0">
+
+        <Card className="w-full min-w-[220px] p-4 bg-gradient-to-br from-yellow-50 to-yellow-100 hover:shadow-xl hover:scale-105 transition-all duration-200 border-0">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Active Offers</CardTitle>
+            <CardTitle className="text-sm font-medium">Offers & Coupons</CardTitle>
             <Tag className="h-4 w-4 text-yellow-700" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-yellow-900">24</div>
-            <p className="text-xs text-yellow-800">+4 this month</p>
+            <div className="text-2xl font-bold text-yellow-900">{stats.totalOffers}</div>
+            <div className="flex items-center space-x-2 mt-2">
+              <span className="text-xs text-yellow-800">Active: {stats.activeOffers}</span>
+              <span className="text-xs text-gray-800">Coupons: {stats.totalCoupons}</span>
+            </div>
           </CardContent>
         </Card>
-        <Card className="w-full min-w-[220px] p-4 bg-purple-100 hover:bg-purple-200 hover:shadow-xl hover:scale-105 transition-all duration-200 border-0">
+
+        <Card className="w-full min-w-[220px] p-4 bg-gradient-to-br from-purple-50 to-purple-100 hover:shadow-xl hover:scale-105 transition-all duration-200 border-0">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Coupons Generated</CardTitle>
-            <Ticket className="h-4 w-4 text-purple-700" />
+            <CardTitle className="text-sm font-medium">Revenue</CardTitle>
+            <BarChart className="h-4 w-4 text-purple-700" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-purple-900">3,891</div>
-            <p className="text-xs text-purple-800">+12% from last month</p>
+            <div className="text-2xl font-bold text-purple-900">${formatNumber(stats.totalRevenue)}</div>
+            <div className="flex items-center space-x-2 mt-2">
+              <span className="text-xs text-purple-800">Monthly: ${formatNumber(stats.monthlyRevenue)}</span>
+              <span className="text-xs text-green-800">+12% from last month</span>
+            </div>
           </CardContent>
         </Card>
       </div>
-      {/* Main Sections */}
-      <div className="flex flex-col gap-10">
-        <Card className="w-full p-10 min-h-[420px] min-w-[420px]">
-          <CardHeader>
-            <CardTitle>Companies</CardTitle>
-            <CardDescription>Manage registered companies and their offers</CardDescription>
+
+      {/* Main Content Grid */}
+      <div className="grid gap-6 md:grid-cols-2">
+        {/* Companies Section */}
+        <Card className="w-full">
+          <CardHeader className="flex flex-row items-center justify-between">
+            <div>
+              <CardTitle>Recent Companies</CardTitle>
+              <CardDescription>Latest registered companies</CardDescription>
+            </div>
+            <Link href="/admin/companies">
+              <Button variant="outline" size="sm">
+                View All
+              </Button>
+            </Link>
           </CardHeader>
-          <CardContent className="p-4 pt-4 flex flex-col justify-between h-full">
-            <div className="w-full">
-              <Table className="w-full text-sm">
+          <CardContent>
+            <div className="w-full overflow-x-auto">
+              <Table>
                 <TableHeader>
                   <TableRow>
                     <TableHead>Company</TableHead>
-                    <TableHead>Email</TableHead>
-                    <TableHead>Offers</TableHead>
                     <TableHead>Status</TableHead>
+                    <TableHead>Offers</TableHead>
                     <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {companies.map((company) => (
+                  {companies.slice(0, 5).map((company) => (
                     <TableRow key={company.id}>
                       <TableCell className="font-medium">{company.name}</TableCell>
-                      <TableCell>{company.email}</TableCell>
-                      <TableCell>{company.offers}</TableCell>
                       <TableCell>
-                        <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${company.status === "Active" ? "bg-green-100 text-green-800" : "bg-yellow-100 text-yellow-800"}`}>{company.status}</span>
+                        <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${
+                          company.status === "Active" ? "bg-green-100 text-green-800" : "bg-yellow-100 text-yellow-800"
+                        }`}>
+                          {company.status}
+                        </span>
                       </TableCell>
+                      <TableCell>{company.offers}</TableCell>
                       <TableCell className="text-right">
                         <Button variant="ghost" size="sm">
                           <Edit2 className="h-4 w-4" />
@@ -190,20 +236,27 @@ export default function AdminDashboardPage() {
             </div>
           </CardContent>
         </Card>
-        <Card className="w-full p-10 min-h-[420px] min-w-[420px]">
-          <CardHeader>
-            <CardTitle>Offers</CardTitle>
-            <CardDescription>View and manage all offers</CardDescription>
+
+        {/* Offers Section */}
+        <Card className="w-full">
+          <CardHeader className="flex flex-row items-center justify-between">
+            <div>
+              <CardTitle>Recent Offers</CardTitle>
+              <CardDescription>Latest offers and their status</CardDescription>
+            </div>
+            <Link href="/admin/offers">
+              <Button variant="outline" size="sm">
+                View All
+              </Button>
+            </Link>
           </CardHeader>
-          <CardContent className="p-4 pt-4 flex flex-col justify-between h-full">
-            <div className="w-full">
-              <Table className="w-full text-sm">
+          <CardContent>
+            <div className="w-full overflow-x-auto">
+              <Table>
                 <TableHeader>
                   <TableRow>
                     <TableHead>Title</TableHead>
                     <TableHead>Company</TableHead>
-                    <TableHead>Discount</TableHead>
-                    <TableHead>Validity</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
@@ -213,10 +266,10 @@ export default function AdminDashboardPage() {
                     <TableRow key={offer.id}>
                       <TableCell className="font-medium">{offer.title}</TableCell>
                       <TableCell>{offer.company}</TableCell>
-                      <TableCell>{offer.discount}</TableCell>
-                      <TableCell>{offer.validity}</TableCell>
                       <TableCell>
-                        <span className="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium bg-green-100 text-green-800">{offer.status}</span>
+                        <span className="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium bg-green-100 text-green-800">
+                          {offer.status}
+                        </span>
                       </TableCell>
                       <TableCell className="text-right">
                         <Button variant="ghost" size="sm">
@@ -234,6 +287,76 @@ export default function AdminDashboardPage() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Quick Stats Section */}
+      <div className="grid gap-6 md:grid-cols-3">
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg">Coupon Performance</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              <div className="flex justify-between">
+                <span className="text-sm text-muted-foreground">Total Generated</span>
+                <span className="font-medium">{stats.totalCoupons}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-sm text-muted-foreground">Redeemed</span>
+                <span className="font-medium">{stats.redeemedCoupons}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-sm text-muted-foreground">Redemption Rate</span>
+                <span className="font-medium">{(stats.redeemedCoupons / stats.totalCoupons * 100).toFixed(1)}%</span>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg">Employee Activity</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              <div className="flex justify-between">
+                <span className="text-sm text-muted-foreground">Active Employees</span>
+                <span className="font-medium">{stats.activeEmployees}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-sm text-muted-foreground">Inactive Employees</span>
+                <span className="font-medium">{stats.totalEmployees - stats.activeEmployees}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-sm text-muted-foreground">Engagement Rate</span>
+                <span className="font-medium">{(stats.activeEmployees / stats.totalEmployees * 100).toFixed(1)}%</span>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg">Revenue Overview</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              <div className="flex justify-between">
+                <span className="text-sm text-muted-foreground">Total Revenue</span>
+                <span className="font-medium">${formatNumber(stats.totalRevenue)}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-sm text-muted-foreground">Monthly Revenue</span>
+                <span className="font-medium">${formatNumber(stats.monthlyRevenue)}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-sm text-muted-foreground">Growth Rate</span>
+                <span className="font-medium text-green-600">+12%</span>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
       {/* Add Company Modal */}
       {showAddModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 overflow-y-auto">

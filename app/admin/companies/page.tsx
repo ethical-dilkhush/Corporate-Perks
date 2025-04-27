@@ -15,7 +15,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { MoreHorizontal, Eye, Edit, Trash, Check, X, Plus, Building2, Users, Package, Activity, Search, Filter } from "lucide-react";
+import { MoreHorizontal, Eye, Edit, Trash, Check, X, Plus, Building2, Users, Package, Activity, Search, Filter, Edit2, Trash2, CheckCircle2, XCircle, Clock } from "lucide-react";
 import Link from "next/link";
 import {
   Card,
@@ -25,26 +25,19 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { useRouter } from "next/navigation";
+import { formatNumber } from "@/lib/utils";
 
 interface Company {
-  id: string;
+  id: number;
   name: string;
+  email: string;
   industry: string;
-  address: string;
-  city: string;
-  state: string;
-  country: string;
-  postal_code: string;
-  contact_name: string;
-  contact_email: string;
-  contact_phone: string;
-  website: string;
-  tax_id: string;
-  description: string;
-  status: string;
-  created_at: string;
-  employees?: number;
-  deals?: number;
+  location: string;
+  employees: number;
+  revenue: number;
+  offers: number;
+  status: "Active" | "Pending";
+  joined: string;
 }
 
 // Mock data for company analytics
@@ -58,69 +51,56 @@ const companyAnalytics = {
 // Mock data for recent companies
 const recentCompanies: Company[] = [
   {
-    id: "1",
-    name: "TechCorp Inc.",
+    id: 1,
+    name: "TechGadgets Inc.",
+    email: "contact@techgadgets.com",
     industry: "Technology",
-    address: "123 Tech Street",
-    city: "Silicon Valley",
-    state: "CA",
-    country: "USA",
-    postal_code: "94025",
-    contact_name: "John Smith",
-    contact_email: "john@techcorp.com",
-    contact_phone: "+1 234 567 8900",
-    website: "https://techcorp.com",
-    tax_id: "123456789",
-    description: "Leading technology solutions provider",
-    status: "approved",
-    created_at: "2024-01-01",
-    employees: 250,
-    deals: 15
+    location: "San Francisco, CA",
+    employees: 150,
+    revenue: 2500000,
+    offers: 5,
+    status: "Active",
+    joined: "2023-01-15"
   },
   {
-    id: "2",
-    name: "Global Solutions",
-    industry: "Consulting",
-    address: "456 Global Avenue",
-    city: "New York",
-    state: "NY",
-    country: "USA",
-    postal_code: "10001",
-    contact_name: "Sarah Johnson",
-    contact_email: "sarah@globalsolutions.com",
-    contact_phone: "+1 234 567 8901",
-    website: "https://globalsolutions.com",
-    tax_id: "987654321",
-    description: "International business consulting firm",
-    status: "pending",
-    created_at: "2024-01-02",
-    employees: 180,
-    deals: 12
+    id: 2,
+    name: "CloudSoft Solutions",
+    email: "info@cloudsoft.com",
+    industry: "Cloud Services",
+    location: "Austin, TX",
+    employees: 75,
+    revenue: 1200000,
+    offers: 3,
+    status: "Pending",
+    joined: "2023-03-22"
   },
   {
-    id: "3",
-    name: "Innovate Labs",
-    industry: "Research",
-    address: "789 Innovation Drive",
-    city: "Boston",
-    state: "MA",
-    country: "USA",
-    postal_code: "02108",
-    contact_name: "Michael Chen",
-    contact_email: "michael@innovatelabs.com",
-    contact_phone: "+1 234 567 8902",
-    website: "https://innovatelabs.com",
-    tax_id: "456789123",
-    description: "Cutting-edge research and development",
-    status: "approved",
-    created_at: "2024-01-03",
-    employees: 95,
-    deals: 8
+    id: 3,
+    name: "Green Energy Co.",
+    email: "hello@greenenergy.com",
+    industry: "Renewable Energy",
+    location: "Denver, CO",
+    employees: 200,
+    revenue: 3500000,
+    offers: 2,
+    status: "Active",
+    joined: "2023-02-10"
   }
 ]
 
+interface CompanyForm {
+  name: string;
+  email: string;
+  industry: string;
+  location: string;
+  employees: string;
+  revenue: string;
+  offers: string;
+  status: "Active" | "Pending";
+}
+
 export default function AdminCompaniesPage() {
-  const [companies, setCompanies] = useState<Company[]>([]);
+  const [companies, setCompanies] = useState<Company[]>(recentCompanies);
   const [loading, setLoading] = useState(true);
   const [selectedCompany, setSelectedCompany] = useState<Company | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
@@ -128,24 +108,15 @@ export default function AdminCompaniesPage() {
   const [showAddModal, setShowAddModal] = useState(false);
   const [success, setSuccess] = useState(false);
   const [formError, setFormError] = useState('');
-  const [form, setForm] = useState({
+  const [form, setForm] = useState<CompanyForm>({
     name: "",
+    email: "",
     industry: "",
-    address: "",
-    city: "",
-    state: "",
-    country: "",
-    postalCode: "",
-    contactName: "",
-    contactEmail: "",
-    contactPhone: "",
-    website: "",
-    taxId: "",
-    description: "",
-    status: "pending",
-    assignedEmail: "",
-    assignedPassword: "",
-    confirmAssignedPassword: ""
+    location: "",
+    employees: "",
+    revenue: "",
+    offers: "",
+    status: "Active"
   });
   const [showDetails, setShowDetails] = useState(false);
   const router = useRouter()
@@ -163,19 +134,19 @@ export default function AdminCompaniesPage() {
     fetchCompanies();
   }, []);
 
-  async function approveCompany(id: string) {
+  async function approveCompany(id: number) {
     const { error } = await supabase
       .from("companies")
-      .update({ status: "approved" })
+      .update({ status: "Active" })
       .eq("id", id);
     if (!error) {
       setCompanies((prev) =>
-        prev.map((c) => (c.id === id ? { ...c, status: "approved" } : c))
+        prev.map((c) => (c.id === id ? { ...c, status: "Active" } : c))
       );
     }
   }
 
-  async function deleteCompany(id: string) {
+  async function deleteCompany(id: number) {
     const { error } = await supabase
       .from("companies")
       .delete()
@@ -201,66 +172,36 @@ export default function AdminCompaniesPage() {
     setForm({ ...form, [e.target.name]: e.target.value });
   };
 
-  const handleAddCompany = async (e: React.FormEvent) => {
+  const handleAddCompany = (e: React.FormEvent) => {
     e.preventDefault();
-    
-    if (form.assignedPassword !== form.confirmAssignedPassword) {
+    const newCompany: Company = {
+      id: companies.length + 1,
+      name: form.name,
+      email: form.email,
+      industry: form.industry,
+      location: form.location,
+      employees: Number(form.employees),
+      revenue: Number(form.revenue),
+      offers: Number(form.offers),
+      status: form.status,
+      joined: new Date().toISOString().split('T')[0]
+    };
+    setCompanies([...companies, newCompany]);
+    setForm({
+      name: "",
+      email: "",
+      industry: "",
+      location: "",
+      employees: "",
+      revenue: "",
+      offers: "",
+      status: "Active"
+    });
+    setSuccess(true);
+    setTimeout(() => {
       setSuccess(false);
-      setFormError('Passwords do not match');
-      return;
-    }
-
-    const { data, error } = await supabase.from("companies").insert([
-      {
-        name: form.name,
-        industry: form.industry,
-        address: form.address,
-        city: form.city,
-        state: form.state,
-        country: form.country,
-        postal_code: form.postalCode,
-        contact_name: form.contactName,
-        contact_email: form.contactEmail,
-        contact_phone: form.contactPhone,
-        website: form.website,
-        tax_id: form.taxId,
-        description: form.description,
-        status: form.status
-      }
-    ]).select();
-
-    if (error) {
-      setFormError('Error adding company. Please try again.');
-      return;
-    }
-
-    if (data) {
-      setCompanies([data[0], ...companies]);
-      setForm({
-        name: "",
-        industry: "",
-        address: "",
-        city: "",
-        state: "",
-        country: "",
-        postalCode: "",
-        contactName: "",
-        contactEmail: "",
-        contactPhone: "",
-        website: "",
-        taxId: "",
-        description: "",
-        status: "pending",
-        assignedEmail: "",
-        assignedPassword: "",
-        confirmAssignedPassword: ""
-      });
-      setSuccess(true);
-      setTimeout(() => {
-        setSuccess(false);
-        setShowAddModal(false);
-      }, 1200);
-    }
+      setShowAddModal(false);
+    }, 1200);
   };
 
   const handleViewDetails = (company: Company) => {
@@ -274,7 +215,7 @@ export default function AdminCompaniesPage() {
 
   const filteredCompanies = companies.filter((c) =>
     c.name.toLowerCase().includes(search.toLowerCase()) ||
-    c.contact_email.toLowerCase().includes(search.toLowerCase())
+    c.email.toLowerCase().includes(search.toLowerCase())
   );
 
   if (loading) return <div className="p-8 text-center">Loading...</div>;
@@ -359,7 +300,7 @@ export default function AdminCompaniesPage() {
                   </div>
                   <div className="flex items-center space-x-2">
                     <Badge
-                      variant={company.status === "approved" ? "default" : "secondary"}
+                      variant={company.status === "Active" ? "default" : "secondary"}
                     >
                       {company.status}
                     </Badge>
@@ -402,41 +343,20 @@ export default function AdminCompaniesPage() {
                   <p className="font-medium">{selectedCompany.employees}</p>
                 </div>
                 <div>
-                  <p className="text-sm text-muted-foreground">Active Deals</p>
-                  <p className="font-medium">{selectedCompany.deals}</p>
+                  <p className="text-sm text-muted-foreground">Revenue</p>
+                  <p className="font-medium">${formatNumber(selectedCompany.revenue)}</p>
                 </div>
               </div>
               
               <div className="space-y-4">
                 <div>
-                  <p className="text-sm text-muted-foreground">Contact Information</p>
-                  <div className="mt-2 space-y-2">
-                    <p className="font-medium">{selectedCompany.contact_name}</p>
-                    <p>{selectedCompany.contact_email}</p>
-                    <p>{selectedCompany.contact_phone}</p>
-                  </div>
+                  <p className="text-sm text-muted-foreground">Location</p>
+                  <p className="mt-2">{selectedCompany.location}</p>
                 </div>
                 
                 <div>
-                  <p className="text-sm text-muted-foreground">Address</p>
-                  <p className="mt-2">{selectedCompany.address}, {selectedCompany.city}, {selectedCompany.state}, {selectedCompany.country}</p>
-                </div>
-                
-                <div>
-                  <p className="text-sm text-muted-foreground">Website</p>
-                  <a 
-                    href={selectedCompany.website} 
-                    target="_blank" 
-                    rel="noopener noreferrer"
-                    className="text-blue-600 hover:underline mt-2 block"
-                  >
-                    {selectedCompany.website}
-                  </a>
-                </div>
-                
-                <div>
-                  <p className="text-sm text-muted-foreground">Description</p>
-                  <p className="mt-2">{selectedCompany.description}</p>
+                  <p className="text-sm text-muted-foreground">Email</p>
+                  <p className="mt-2">{selectedCompany.email}</p>
                 </div>
               </div>
 
@@ -477,50 +397,46 @@ export default function AdminCompaniesPage() {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Company</TableHead>
-                    <TableHead>Industry</TableHead>
-                    <TableHead>Employees</TableHead>
+                    <TableHead className="w-[200px]">Company</TableHead>
                     <TableHead>Status</TableHead>
-                    <TableHead>Actions</TableHead>
+                    <TableHead>Industry</TableHead>
+                    <TableHead>Location</TableHead>
+                    <TableHead>Employees</TableHead>
+                    <TableHead>Revenue</TableHead>
+                    <TableHead>Offers</TableHead>
+                    <TableHead>Joined</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {filteredCompanies.map((company) => (
                     <TableRow key={company.id}>
-                      <TableCell>
-                        <div className="flex items-center space-x-4">
-                          <div className="p-2 bg-blue-100 rounded-full">
-                            <Building2 className="h-5 w-5 text-blue-600" />
-                          </div>
-                          <div>
-                            <p className="font-medium">{company.name}</p>
-                            <p className="text-sm text-muted-foreground">{company.website}</p>
-                          </div>
+                      <TableCell className="font-medium">
+                        <div className="flex flex-col">
+                          <span>{company.name}</span>
+                          <span className="text-xs text-muted-foreground">{company.email}</span>
                         </div>
+                      </TableCell>
+                      <TableCell>
+                        <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${
+                          company.status === "Active" ? "bg-green-100 text-green-800" : "bg-yellow-100 text-yellow-800"
+                        }`}>
+                          {company.status}
+                        </span>
                       </TableCell>
                       <TableCell>{company.industry}</TableCell>
-                      <TableCell>{company.employees}</TableCell>
-                      <TableCell>
-                        <Badge
-                          variant={company.status === "approved" ? "default" : "secondary"}
-                        >
-                          {company.status}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center space-x-2">
-                          <Button variant="outline" size="sm" onClick={() => handleEdit(company)}>
-                            <Edit className="mr-2 h-4 w-4" />
-                            Edit
-                          </Button>
-                          <Button variant="outline" size="sm" onClick={() => deleteCompany(company.id)}>
-                            <Trash className="mr-2 h-4 w-4" />
-                            Delete
-                          </Button>
-                          <Button variant="ghost" size="sm" onClick={() => handleViewDetails(company)}>
-                            <Eye className="h-4 w-4" />
-                          </Button>
-                        </div>
+                      <TableCell>{company.location}</TableCell>
+                      <TableCell>{formatNumber(company.employees)}</TableCell>
+                      <TableCell>${formatNumber(company.revenue)}</TableCell>
+                      <TableCell>{company.offers}</TableCell>
+                      <TableCell>{new Date(company.joined).toLocaleDateString()}</TableCell>
+                      <TableCell className="text-right">
+                        <Button variant="ghost" size="sm" onClick={() => handleEdit(company)}>
+                          <Edit2 className="h-4 w-4" />
+                        </Button>
+                        <Button variant="ghost" size="sm" onClick={() => deleteCompany(company.id)}>
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
                       </TableCell>
                     </TableRow>
                   ))}
@@ -540,65 +456,51 @@ export default function AdminCompaniesPage() {
               onClick={() => setShowAddModal(false)}
               aria-label="Close"
             >
-              <X className="h-6 w-6" />
+              <XCircle className="h-6 w-6" />
             </button>
             <h3 className="text-xl font-bold mb-2 text-blue-700">Add New Company</h3>
             <form onSubmit={handleAddCompany} className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                {/* Company Information */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="name">Company Name</Label>
-                  <Input id="name" name="name" value={form.name} onChange={handleChange} required className="mt-1" />
+                  <Input id="name" name="name" value={form.name} onChange={handleChange} required />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="email">Email</Label>
+                  <Input id="email" name="email" type="email" value={form.email} onChange={handleChange} required />
+                </div>
+                <div className="space-y-2">
                   <Label htmlFor="industry">Industry</Label>
-                  <Input id="industry" name="industry" value={form.industry || ''} onChange={handleChange} required className="mt-1" />
-                  <Label htmlFor="address">Company Address</Label>
-                  <Input id="address" name="address" value={form.address || ''} onChange={handleChange} required className="mt-1" />
-                  <Label htmlFor="city">City</Label>
-                  <Input id="city" name="city" value={form.city || ''} onChange={handleChange} required className="mt-1" />
-                  <Label htmlFor="state">State/Province</Label>
-                  <Input id="state" name="state" value={form.state || ''} onChange={handleChange} required className="mt-1" />
-                  <Label htmlFor="country">Country</Label>
-                  <Input id="country" name="country" value={form.country || ''} onChange={handleChange} required className="mt-1" />
-                  <Label htmlFor="postalCode">Postal Code</Label>
-                  <Input id="postalCode" name="postalCode" value={form.postalCode || ''} onChange={handleChange} required className="mt-1" />
+                  <Input id="industry" name="industry" value={form.industry} onChange={handleChange} required />
                 </div>
-                {/* Contact Information */}
                 <div className="space-y-2">
-                  <Label htmlFor="contactName">Contact Person Name</Label>
-                  <Input id="contactName" name="contactName" value={form.contactName || ''} onChange={handleChange} required className="mt-1" />
-                  <Label htmlFor="contactEmail">Contact Email</Label>
-                  <Input id="contactEmail" name="contactEmail" type="email" value={form.contactEmail || ''} onChange={handleChange} required className="mt-1" />
-                  <Label htmlFor="contactPhone">Contact Phone Number</Label>
-                  <Input id="contactPhone" name="contactPhone" value={form.contactPhone || ''} onChange={handleChange} required className="mt-1" />
-                  <Label htmlFor="website">Website URL</Label>
-                  <Input id="website" name="website" value={form.website || ''} onChange={handleChange} required className="mt-1" />
+                  <Label htmlFor="location">Location</Label>
+                  <Input id="location" name="location" value={form.location} onChange={handleChange} required />
                 </div>
-                {/* Additional Details */}
                 <div className="space-y-2">
-                  <Label htmlFor="taxId">Tax ID/VAT Number</Label>
-                  <Input id="taxId" name="taxId" value={form.taxId || ''} onChange={handleChange} required className="mt-1" />
-                  <Label htmlFor="description">Company Description</Label>
-                  <Input id="description" name="description" value={form.description || ''} onChange={handleChange} required className="mt-1" />
+                  <Label htmlFor="employees">Number of Employees</Label>
+                  <Input id="employees" name="employees" type="number" value={form.employees} onChange={handleChange} required />
                 </div>
-              </div>
-              {/* Assigned Email & Password */}
-              <div className="space-y-4 mt-4">
-                <h4 className="text-sm font-medium text-blue-700 mb-2">Account Credentials</h4>
-                <div className="grid grid-cols-1 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="assignedEmail">Assigned Email</Label>
-                    <Input id="assignedEmail" name="assignedEmail" type="email" value={form.assignedEmail || ''} onChange={handleChange} required className="mt-1" />
-                  </div>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="assignedPassword">Assigned Password</Label>
-                      <Input id="assignedPassword" name="assignedPassword" type="password" value={form.assignedPassword || ''} onChange={handleChange} required className="mt-1" />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="confirmAssignedPassword">Confirm Password</Label>
-                      <Input id="confirmAssignedPassword" name="confirmAssignedPassword" type="password" value={form.confirmAssignedPassword || ''} onChange={handleChange} required className="mt-1" />
-                    </div>
-                  </div>
+                <div className="space-y-2">
+                  <Label htmlFor="revenue">Annual Revenue</Label>
+                  <Input id="revenue" name="revenue" type="number" value={form.revenue} onChange={handleChange} required />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="offers">Number of Offers</Label>
+                  <Input id="offers" name="offers" type="number" value={form.offers} onChange={handleChange} required />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="status">Status</Label>
+                  <select
+                    id="status"
+                    name="status"
+                    value={form.status}
+                    onChange={(e) => setForm({ ...form, status: e.target.value as "Active" | "Pending" })}
+                    className="w-full rounded-md border border-input bg-background px-3 py-2"
+                  >
+                    <option value="Active">Active</option>
+                    <option value="Pending">Pending</option>
+                  </select>
                 </div>
               </div>
               {formError && <div className="text-red-600 text-center font-medium mt-2">{formError}</div>}

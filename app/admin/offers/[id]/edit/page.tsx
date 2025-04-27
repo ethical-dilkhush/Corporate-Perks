@@ -2,94 +2,102 @@
 
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
-import { ArrowLeft } from "lucide-react"
+import { use } from "react"
+import { ArrowLeft, Save, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card"
 import { useToast } from "@/hooks/use-toast"
-import { Textarea } from "@/components/ui/textarea"
 
-// Mock data for companies
-const mockCompanies = [
-  { id: "1", name: "TechCorp Inc." },
-  { id: "2", name: "Global Solutions" },
-  { id: "3", name: "Innovate Labs" },
-]
+interface Offer {
+  id: string
+  title: string
+  company: string
+  category: string
+  discount: number
+  status: "Active" | "Expired" | "Pending"
+  startDate: string
+  endDate: string
+  usage: number
+  maxUsage: number
+}
 
-// Mock data for the offer
-const mockOffer = {
-  id: "1",
-  title: "Summer Sale",
-  description: "Get 20% off on all products",
-  company_id: "1",
-  company_name: "TechCorp Inc.",
-  discount_percentage: 20,
-  start_date: "2024-06-01",
-  end_date: "2024-08-31",
-  status: "active",
-  created_at: "2024-05-15T10:00:00Z"
+interface OfferForm {
+  title: string
+  company: string
+  category: string
+  discount: string
+  status: "Active" | "Expired" | "Pending"
+  startDate: string
+  endDate: string
+  maxUsage: string
 }
 
 export default function EditOfferPage({ params }: { params: { id: string } }) {
   const router = useRouter()
   const { toast } = useToast()
-  const [loading, setLoading] = useState(false)
-  const [form, setForm] = useState({
+  const [offer, setOffer] = useState<Offer | null>(null)
+  const [form, setForm] = useState<OfferForm>({
     title: "",
-    description: "",
-    company_id: "",
-    discount_percentage: "",
-    start_date: "",
-    end_date: "",
-    status: "active",
+    company: "",
+    category: "",
+    discount: "",
+    status: "Active",
+    startDate: "",
+    endDate: "",
+    maxUsage: ""
   })
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState("")
 
   useEffect(() => {
-    // TODO: Replace with actual API call to fetch offer
     const fetchOffer = async () => {
       try {
-        // const response = await fetch(`/api/offers/${params.id}`)
-        // const data = await response.json()
-        // setForm(data)
+        // TODO: Replace with actual API call
+        const mockOffer: Offer = {
+          id: params.id,
+          title: "Premium Software Suite",
+          company: "TechGadgets Inc.",
+          category: "Software",
+          discount: 20,
+          status: "Active",
+          startDate: "2024-01-01",
+          endDate: "2024-12-31",
+          usage: 45,
+          maxUsage: 100
+        }
+        setOffer(mockOffer)
         setForm({
           title: mockOffer.title,
-          description: mockOffer.description,
-          company_id: mockOffer.company_id,
-          discount_percentage: mockOffer.discount_percentage.toString(),
-          start_date: mockOffer.start_date,
-          end_date: mockOffer.end_date,
+          company: mockOffer.company,
+          category: mockOffer.category,
+          discount: mockOffer.discount.toString(),
           status: mockOffer.status,
+          startDate: mockOffer.startDate,
+          endDate: mockOffer.endDate,
+          maxUsage: mockOffer.maxUsage.toString()
         })
-      } catch (error) {
+      } catch (err) {
+        setError("Failed to load offer")
         toast({
           title: "Error",
-          description: "Failed to fetch offer details",
+          description: "Failed to load offer details",
           variant: "destructive",
         })
+      } finally {
+        setLoading(false)
       }
     }
 
     fetchOffer()
   }, [params.id, toast])
 
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setForm({ ...form, [e.target.name]: e.target.value })
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    setLoading(true)
-
     try {
       // TODO: Implement API call to update offer
       toast({
@@ -97,151 +105,143 @@ export default function EditOfferPage({ params }: { params: { id: string } }) {
         description: "Offer updated successfully",
       })
       router.push("/admin/offers")
-    } catch (error) {
+    } catch (err) {
       toast({
         title: "Error",
         description: "Failed to update offer",
         variant: "destructive",
       })
-    } finally {
-      setLoading(false)
     }
   }
 
+  if (loading) {
+    return <div>Loading...</div>
+  }
+
+  if (error) {
+    return <div>{error}</div>
+  }
+
   return (
-    <div className="container py-8">
-      <div className="flex items-center gap-4 mb-8">
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={() => router.back()}
-        >
-          <ArrowLeft className="h-4 w-4" />
-        </Button>
-        <div>
-          <h1 className="text-3xl font-bold">Edit Offer</h1>
-          <p className="text-muted-foreground">Update offer details</p>
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center space-x-4">
+          <Button variant="ghost" onClick={() => router.back()}>
+            <ArrowLeft className="h-4 w-4 mr-2" />
+            Back
+          </Button>
+          <div>
+            <h2 className="text-2xl font-bold tracking-tight">Edit Offer</h2>
+            <p className="text-muted-foreground">Update offer details</p>
+          </div>
         </div>
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Offer Details</CardTitle>
-          <CardDescription>
-            Update the details of the offer
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="space-y-2">
-                <Label htmlFor="title">Title</Label>
-                <Input
-                  id="title"
-                  value={form.title}
-                  onChange={(e) => setForm({ ...form, title: e.target.value })}
-                  required
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="company_id">Company</Label>
-                <Select
-                  value={form.company_id}
-                  onValueChange={(value) => setForm({ ...form, company_id: value })}
-                  required
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select company" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {mockCompanies.map((company) => (
-                      <SelectItem key={company.id} value={company.id}>
-                        {company.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="discount_percentage">Discount Percentage</Label>
-                <Input
-                  id="discount_percentage"
-                  type="number"
-                  min="0"
-                  max="100"
-                  value={form.discount_percentage}
-                  onChange={(e) => setForm({ ...form, discount_percentage: e.target.value })}
-                  required
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="status">Status</Label>
-                <Select
-                  value={form.status}
-                  onValueChange={(value) => setForm({ ...form, status: value })}
-                  required
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select status" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="active">Active</SelectItem>
-                    <SelectItem value="inactive">Inactive</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="start_date">Start Date</Label>
-                <Input
-                  id="start_date"
-                  type="date"
-                  value={form.start_date}
-                  onChange={(e) => setForm({ ...form, start_date: e.target.value })}
-                  required
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="end_date">End Date</Label>
-                <Input
-                  id="end_date"
-                  type="date"
-                  value={form.end_date}
-                  onChange={(e) => setForm({ ...form, end_date: e.target.value })}
-                  required
-                />
-              </div>
-
-              <div className="space-y-2 md:col-span-2">
-                <Label htmlFor="description">Description</Label>
-                <Textarea
-                  id="description"
-                  value={form.description}
-                  onChange={(e) => setForm({ ...form, description: e.target.value })}
-                  required
-                />
-              </div>
-            </div>
-
-            <div className="flex justify-end gap-4">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => router.back()}
-              >
-                Cancel
-              </Button>
-              <Button type="submit" disabled={loading}>
-                {loading ? "Updating..." : "Update Offer"}
-              </Button>
-            </div>
-          </form>
-        </CardContent>
-      </Card>
+      <form onSubmit={handleSubmit} className="space-y-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="space-y-2">
+            <Label htmlFor="title">Offer Title</Label>
+            <Input
+              id="title"
+              name="title"
+              value={form.title}
+              onChange={handleChange}
+              required
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="company">Company</Label>
+            <Input
+              id="company"
+              name="company"
+              value={form.company}
+              onChange={handleChange}
+              required
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="category">Category</Label>
+            <Input
+              id="category"
+              name="category"
+              value={form.category}
+              onChange={handleChange}
+              required
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="discount">Discount (%)</Label>
+            <Input
+              id="discount"
+              name="discount"
+              type="number"
+              min="0"
+              max="100"
+              value={form.discount}
+              onChange={handleChange}
+              required
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="startDate">Start Date</Label>
+            <Input
+              id="startDate"
+              name="startDate"
+              type="date"
+              value={form.startDate}
+              onChange={handleChange}
+              required
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="endDate">End Date</Label>
+            <Input
+              id="endDate"
+              name="endDate"
+              type="date"
+              value={form.endDate}
+              onChange={handleChange}
+              required
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="maxUsage">Maximum Usage</Label>
+            <Input
+              id="maxUsage"
+              name="maxUsage"
+              type="number"
+              min="0"
+              value={form.maxUsage}
+              onChange={handleChange}
+              required
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="status">Status</Label>
+            <select
+              id="status"
+              name="status"
+              value={form.status}
+              onChange={(e) => setForm({ ...form, status: e.target.value as "Active" | "Expired" | "Pending" })}
+              className="w-full rounded-md border border-input bg-background px-3 py-2"
+            >
+              <option value="Active">Active</option>
+              <option value="Expired">Expired</option>
+              <option value="Pending">Pending</option>
+            </select>
+          </div>
+        </div>
+        <div className="flex justify-end space-x-2">
+          <Button variant="outline" onClick={() => router.back()}>
+            <X className="h-4 w-4 mr-2" />
+            Cancel
+          </Button>
+          <Button type="submit">
+            <Save className="h-4 w-4 mr-2" />
+            Save Changes
+          </Button>
+        </div>
+      </form>
     </div>
   )
 } 
