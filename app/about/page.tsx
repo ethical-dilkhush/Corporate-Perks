@@ -1,5 +1,6 @@
 import { Building2, Users, Gift, BarChart3, Shield, Heart } from "lucide-react"
 import Image from "next/image"
+import { Footer } from "@/components/footer"
 
 export default function AboutPage() {
   return (
@@ -140,31 +141,7 @@ export default function AboutPage() {
         </div>
       </section>
 
-      {/* CTA Section */}
-      <section className="py-20 bg-primary/5">
-        <div className="container mx-auto px-4">
-          <div className="mx-auto max-w-3xl text-center">
-            <h2 className="text-3xl font-bold mb-6">Ready to Get Started?</h2>
-            <p className="text-lg text-muted-foreground mb-8">
-              Join thousands of companies who are already providing exclusive benefits to their employees.
-            </p>
-            <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <a
-                href="/auth/register"
-                className="inline-flex h-12 items-center justify-center rounded-md bg-primary px-6 text-sm font-medium text-primary-foreground shadow transition-colors hover:bg-primary/90"
-              >
-                Get Started
-              </a>
-              <a
-                href="/contact"
-                className="inline-flex h-12 items-center justify-center rounded-md border border-input bg-background px-6 text-sm font-medium shadow-sm transition-colors hover:bg-accent hover:text-accent-foreground"
-              >
-                Contact Sales
-              </a>
-            </div>
-          </div>
-        </div>
-      </section>
+      <Footer />
     </div>
   )
 } 

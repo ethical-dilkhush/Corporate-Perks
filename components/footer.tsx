@@ -1,108 +1,90 @@
 "use client";
 
 import Link from "next/link"
-import { Facebook, Twitter, Instagram, Linkedin } from "lucide-react"
-import { useState, useEffect } from "react"
+import { Facebook, Twitter, Linkedin, Mail } from "lucide-react"
 
 export function Footer() {
-  const [year, setYear] = useState<string>("");
-
-  useEffect(() => {
-    setYear(new Date().getFullYear().toString());
-  }, []);
-
   return (
-    <footer className="border-t bg-background">
+    <footer className="bg-primary/5 border-t">
       <div className="container mx-auto px-4 py-12">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-x-16 gap-y-8">
+        <div className="grid gap-8 md:grid-cols-4">
           {/* Company Info */}
-          <div className="flex flex-col space-y-4">
-            <h3 className="text-lg font-semibold text-foreground">Corporate Perks</h3>
-            <p className="text-muted-foreground">
+          <div className="space-y-4">
+            <h3 className="text-lg font-semibold">Corporate Perks</h3>
+            <p className="text-sm text-muted-foreground">
               Empowering companies to provide exclusive benefits to their employees through curated partnerships.
             </p>
             <div className="flex space-x-4">
-              <Link href="#" className="text-muted-foreground hover:text-foreground">
+              <a href="#" className="text-muted-foreground hover:text-primary">
                 <Facebook className="h-5 w-5" />
-              </Link>
-              <Link href="#" className="text-muted-foreground hover:text-foreground">
+              </a>
+              <a href="#" className="text-muted-foreground hover:text-primary">
                 <Twitter className="h-5 w-5" />
-              </Link>
-              <Link href="#" className="text-muted-foreground hover:text-foreground">
-                <Instagram className="h-5 w-5" />
-              </Link>
-              <Link href="#" className="text-muted-foreground hover:text-foreground">
+              </a>
+              <a href="#" className="text-muted-foreground hover:text-primary">
                 <Linkedin className="h-5 w-5" />
-              </Link>
+              </a>
+              <a href="#" className="text-muted-foreground hover:text-primary">
+                <Mail className="h-5 w-5" />
+              </a>
             </div>
           </div>
 
           {/* Quick Links */}
-          <div className="flex flex-col space-y-4">
-            <h3 className="text-lg font-semibold text-foreground">Quick Links</h3>
-            <ul className="flex flex-col space-y-3">
+          <div className="space-y-4">
+            <h3 className="text-lg font-semibold">Quick Links</h3>
+            <ul className="space-y-2 text-sm">
               <li>
-                <Link href="/about" className="text-muted-foreground hover:text-foreground">
+                <Link href="/about" className="text-muted-foreground hover:text-primary">
                   About Us
                 </Link>
               </li>
               <li>
-                <Link href="/contact" className="text-muted-foreground hover:text-foreground">
+                <Link href="/vendors" className="text-muted-foreground hover:text-primary">
+                  For Vendors
+                </Link>
+              </li>
+              <li>
+                <Link href="/contact" className="text-muted-foreground hover:text-primary">
                   Contact
-                </Link>
-              </li>
-              <li>
-                <Link href="/privacy" className="text-muted-foreground hover:text-foreground">
-                  Privacy Policy
-                </Link>
-              </li>
-              <li>
-                <Link href="/terms" className="text-muted-foreground hover:text-foreground">
-                  Terms of Service
                 </Link>
               </li>
             </ul>
           </div>
 
           {/* Resources */}
-          <div className="flex flex-col space-y-4">
-            <h3 className="text-lg font-semibold text-foreground">Resources</h3>
-            <ul className="flex flex-col space-y-3">
+          <div className="space-y-4">
+            <h3 className="text-lg font-semibold">Resources</h3>
+            <ul className="space-y-2 text-sm">
               <li>
-                <Link href="/blog" className="text-muted-foreground hover:text-foreground">
-                  Blog
-                </Link>
-              </li>
-              <li>
-                <Link href="/faq" className="text-muted-foreground hover:text-foreground">
+                <Link href="/faq" className="text-muted-foreground hover:text-primary">
                   FAQ
                 </Link>
               </li>
               <li>
-                <Link href="/support" className="text-muted-foreground hover:text-foreground">
-                  Support
-                </Link>
-              </li>
-              <li>
-                <Link href="/partners" className="text-muted-foreground hover:text-foreground">
-                  Partners
+                <Link href="/terms" className="text-muted-foreground hover:text-primary">
+                  Terms of Service
                 </Link>
               </li>
             </ul>
           </div>
 
           {/* Contact Info */}
-          <div className="flex flex-col space-y-4">
-            <h3 className="text-lg font-semibold text-foreground">Contact Us</h3>
-            <ul className="flex flex-col space-y-3">
+          <div className="space-y-4">
+            <h3 className="text-lg font-semibold">Contact Us</h3>
+            <ul className="space-y-2 text-sm">
               <li className="text-muted-foreground">
-                Email: support@corporateperks.com
+                support@corporateperks.com
               </li>
               <li className="text-muted-foreground">
-                Phone: +1 (555) 123-4567
+                +1 (555) 123-4567
               </li>
               <li className="text-muted-foreground">
-                Address: 123 Business Ave, Suite 100
+                123 Corporate Plaza
+                <br />
+                Suite 500
+                <br />
+                New York, NY 10001
               </li>
             </ul>
           </div>
@@ -110,7 +92,7 @@ export function Footer() {
 
         {/* Copyright */}
         <div className="mt-12 border-t pt-8 text-center text-sm text-muted-foreground">
-          <p>© {year} Corporate Perks. All rights reserved.</p>
+          © {new Date().getFullYear()} Corporate Perks. All rights reserved.
         </div>
       </div>
     </footer>

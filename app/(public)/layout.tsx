@@ -1,4 +1,4 @@
-import { Footer } from "@/components/layout/footer"
+import { Footer } from "@/components/footer"
 
 export default function PublicLayout({
   children,

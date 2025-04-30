@@ -4,6 +4,7 @@ import { Building2, Store, Users, Gift, ArrowRight, CheckCircle2, Mail, Phone } 
 import Image from "next/image"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
+import { Footer } from "@/components/footer"
 
 const vendorCategories = [
   {
@@ -240,30 +241,7 @@ export default function VendorsPage() {
         </div>
       </section>
 
-      {/* CTA Section */}
-      <section className="py-20 bg-primary/5">
-        <div className="container mx-auto px-4">
-          <div className="mx-auto max-w-3xl text-center">
-            <h2 className="text-3xl font-bold mb-6">Ready to Grow Your Business?</h2>
-            <p className="text-lg text-muted-foreground mb-8">
-              Join our network of premium vendors and start connecting with corporate clients today.
-            </p>
-            <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <Link href="#partnership-form">
-                <Button size="lg">
-                  Apply Now
-                  <ArrowRight className="ml-2 h-4 w-4" />
-                </Button>
-              </Link>
-              <Link href="/contact">
-                <Button size="lg" variant="outline">
-                  Contact Sales
-                </Button>
-              </Link>
-            </div>
-          </div>
-        </div>
-      </section>
+      <Footer />
     </div>
   )
 } 

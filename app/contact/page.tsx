@@ -8,6 +8,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
 import { Mail, Phone, MapPin, Clock, Send, ArrowRight } from "lucide-react"
 import Image from "next/image"
+import { Footer } from "@/components/footer"
 
 export default function ContactPage() {
   const [formData, setFormData] = useState({
@@ -199,19 +200,7 @@ export default function ContactPage() {
         </div>
       </div>
 
-      {/* CTA Section (outside the background) */}
-      <div className="bg-primary/5 py-16">
-        <div className="container mx-auto px-4 text-center">
-          <h2 className="text-3xl font-bold mb-4">Ready to Get Started?</h2>
-          <p className="text-xl text-muted-foreground mb-8 max-w-2xl mx-auto">
-            Join thousands of companies who are already using Corporate Perks to enhance their employee benefits program.
-          </p>
-          <Button size="lg" className="group">
-            Schedule a Demo
-            <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-1" />
-          </Button>
-        </div>
-      </div>
+      <Footer />
     </div>
   )
 } 
