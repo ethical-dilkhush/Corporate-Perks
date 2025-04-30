@@ -5,8 +5,9 @@ import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { useToast } from "@/hooks/use-toast"
-import { Mail } from "lucide-react"
+import { Mail, Lock } from "lucide-react"
+import { createClientComponentClient } from "@supabase/auth-helpers-nextjs"
+import { toast } from "sonner"
 
 interface LoginFormProps {
   role: string
@@ -14,31 +15,69 @@ interface LoginFormProps {
 
 export function LoginForm({ role }: LoginFormProps) {
   const [email, setEmail] = useState("")
+  const [password, setPassword] = useState("")
   const [isLoading, setIsLoading] = useState(false)
   const router = useRouter()
-  const { toast } = useToast()
+  const supabase = createClientComponentClient()
 
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsLoading(true)
 
     try {
-      // In a real app, this would be an API call to verify the email
-      // await fetch("/api/auth/login", { method: "POST", body: JSON.stringify({ email, role }) })
-      
-      // For demo purposes, we'll just show a success message and redirect
-      toast({
-        title: "Verification email sent",
-        description: "Check your email for the login link.",
-      })
+      if (role === "company") {
+        // Company login with password
+        const { data, error } = await supabase.auth.signInWithPassword({
+          email,
+          password,
+        })
 
-      // Pass the role as a query parameter
-      router.push(`/auth/verify-otp?role=${role}`)
+        if (error) {
+          if (error.message.includes('Invalid login credentials')) {
+            toast.error("Invalid credentials", {
+              description: "Please check your email and password."
+            })
+          } else {
+            toast.error("Login failed", {
+              description: "An error occurred during login. Please try again."
+            })
+          }
+          return
+        }
+
+        if (data?.user) {
+          // Verify this is a company account
+          const { data: companyData, error: companyError } = await supabase
+            .from('companies')
+            .select('*')
+            .eq('email', email)
+            .single()
+
+          if (companyError || !companyData) {
+            toast.error("Access Denied", {
+              description: "This account is not registered as a company. Please contact support if you think this is a mistake."
+            })
+            return
+          }
+
+          toast.success("Welcome back!", {
+            description: "Successfully logged in to your company account."
+          })
+
+          router.push('/company/dashboard')
+          router.refresh()
+        }
+      } else {
+        // Admin and employee continue with email OTP
+        toast.success("Verification email sent", {
+          description: "Check your email for the login link."
+        })
+
+        router.push(`/auth/verify-otp?role=${role}`)
+      }
     } catch (error) {
-      toast({
-        title: "Error",
-        description: "Something went wrong. Please try again.",
-        variant: "destructive",
+      toast.error("Login Error", {
+        description: "An unexpected error occurred. Please try again later."
       })
     } finally {
       setIsLoading(false)
@@ -66,8 +105,28 @@ export function LoginForm({ role }: LoginFormProps) {
           />
         </div>
       </div>
+
+      {role === "company" && (
+        <div className="space-y-2">
+          <Label htmlFor="password">Password</Label>
+          <div className="relative">
+            <Lock className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+            <Input
+              id="password"
+              type="password"
+              placeholder="Enter your password"
+              className="pl-8"
+              disabled={isLoading}
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+            />
+          </div>
+        </div>
+      )}
+
       <Button type="submit" className="w-full" disabled={isLoading}>
-        {isLoading ? "Sending..." : "Sign In with Email"}
+        {isLoading ? "Signing in..." : role === "company" ? "Sign In" : "Sign In with Email"}
       </Button>
     </form>
   )

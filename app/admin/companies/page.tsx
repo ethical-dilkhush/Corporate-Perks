@@ -26,9 +26,13 @@ import {
 } from "@/components/ui/card";
 import { useRouter } from "next/navigation";
 import { formatNumber } from "@/lib/utils";
+import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
+import { toast } from "sonner";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { Separator } from "@/components/ui/separator"
 
 interface Company {
-  id: number;
+  id: string;
   name: string;
   email: string;
   industry: string;
@@ -36,8 +40,27 @@ interface Company {
   employees: number;
   revenue: number;
   offers: number;
-  status: "Active" | "Pending";
-  joined: string;
+  status: string;
+  created_at: string;
+}
+
+interface RegistrationRequest {
+  id: string;
+  name: string;
+  industry: string;
+  address: string;
+  city: string;
+  state: string;
+  country: string;
+  postal_code: string;
+  website: string;
+  tax_id: string;
+  description: string;
+  contact_name: string;
+  contact_email: string;
+  contact_phone: string;
+  status: string;
+  created_at: string;
 }
 
 // Mock data for company analytics
@@ -51,7 +74,7 @@ const companyAnalytics = {
 // Mock data for recent companies
 const recentCompanies: Company[] = [
   {
-    id: 1,
+    id: "1",
     name: "TechGadgets Inc.",
     email: "contact@techgadgets.com",
     industry: "Technology",
@@ -60,10 +83,10 @@ const recentCompanies: Company[] = [
     revenue: 2500000,
     offers: 5,
     status: "Active",
-    joined: "2023-01-15"
+    created_at: "2023-01-15"
   },
   {
-    id: 2,
+    id: "2",
     name: "CloudSoft Solutions",
     email: "info@cloudsoft.com",
     industry: "Cloud Services",
@@ -72,10 +95,10 @@ const recentCompanies: Company[] = [
     revenue: 1200000,
     offers: 3,
     status: "Pending",
-    joined: "2023-03-22"
+    created_at: "2023-03-22"
   },
   {
-    id: 3,
+    id: "3",
     name: "Green Energy Co.",
     email: "hello@greenenergy.com",
     industry: "Renewable Energy",
@@ -84,7 +107,7 @@ const recentCompanies: Company[] = [
     revenue: 3500000,
     offers: 2,
     status: "Active",
-    joined: "2023-02-10"
+    created_at: "2023-02-10"
   }
 ]
 
@@ -99,9 +122,94 @@ interface CompanyForm {
   status: "Active" | "Pending";
 }
 
+// Add this interface for the registration request details modal
+interface RegistrationRequestDetailsModalProps {
+  request: RegistrationRequest
+  isOpen: boolean
+  onClose: () => void
+}
+
+// Add this component for the registration request details modal
+function RegistrationRequestDetailsModal({ request, isOpen, onClose }: RegistrationRequestDetailsModalProps) {
+  return (
+    <Dialog open={isOpen} onOpenChange={onClose}>
+      <DialogContent className="max-w-2xl">
+        <DialogHeader>
+          <DialogTitle>Registration Request Details</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-6">
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <h3 className="text-sm font-medium text-muted-foreground">Company Name</h3>
+              <p className="mt-1">{request.name}</p>
+            </div>
+            <div>
+              <h3 className="text-sm font-medium text-muted-foreground">Industry</h3>
+              <p className="mt-1">{request.industry}</p>
+            </div>
+            <div>
+              <h3 className="text-sm font-medium text-muted-foreground">Website</h3>
+              <p className="mt-1">{request.website}</p>
+            </div>
+            <div>
+              <h3 className="text-sm font-medium text-muted-foreground">Tax ID</h3>
+              <p className="mt-1">{request.tax_id}</p>
+            </div>
+            <div>
+              <h3 className="text-sm font-medium text-muted-foreground">Contact Name</h3>
+              <p className="mt-1">{request.contact_name}</p>
+            </div>
+            <div>
+              <h3 className="text-sm font-medium text-muted-foreground">Contact Email</h3>
+              <p className="mt-1">{request.contact_email}</p>
+            </div>
+            <div>
+              <h3 className="text-sm font-medium text-muted-foreground">Contact Phone</h3>
+              <p className="mt-1">{request.contact_phone}</p>
+            </div>
+            <div>
+              <h3 className="text-sm font-medium text-muted-foreground">Status</h3>
+              <p className="mt-1">
+                <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${
+                  request.status === 'pending' ? 'bg-yellow-100 text-yellow-800' : 
+                  request.status === 'approved' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                }`}>
+                  {request.status}
+                </span>
+              </p>
+            </div>
+            <div className="col-span-2">
+              <h3 className="text-sm font-medium text-muted-foreground">Address</h3>
+              <p className="mt-1">{request.address}</p>
+              <p className="text-sm text-muted-foreground">
+                {request.city}, {request.state} {request.postal_code}
+              </p>
+              <p className="text-sm text-muted-foreground">{request.country}</p>
+            </div>
+            <div className="col-span-2">
+              <h3 className="text-sm font-medium text-muted-foreground">Description</h3>
+              <p className="mt-1">{request.description}</p>
+            </div>
+          </div>
+
+          <Separator />
+
+          <div className="flex justify-end space-x-2">
+            <Button variant="outline" onClick={onClose}>
+              Close
+            </Button>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
 export default function AdminCompaniesPage() {
-  const [companies, setCompanies] = useState<Company[]>(recentCompanies);
-  const [loading, setLoading] = useState(true);
+  const [companies, setCompanies] = useState<Company[]>([]);
+  const [registrationRequests, setRegistrationRequests] = useState<RegistrationRequest[]>([]);
+  const [companiesLoading, setCompaniesLoading] = useState(true);
+  const [requestsLoading, setRequestsLoading] = useState(true);
   const [selectedCompany, setSelectedCompany] = useState<Company | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
   const [search, setSearch] = useState("");
@@ -120,43 +228,252 @@ export default function AdminCompaniesPage() {
   });
   const [showDetails, setShowDetails] = useState(false);
   const router = useRouter()
+  const [companiesError, setCompaniesError] = useState<string | null>(null);
+  const [requestsError, setRequestsError] = useState<string | null>(null);
+  const [selectedRequest, setSelectedRequest] = useState<RegistrationRequest | null>(null)
+  const [showRequestDetails, setShowRequestDetails] = useState(false)
+  const [isLoading, setIsLoading] = useState(false)
 
   useEffect(() => {
-    async function fetchCompanies() {
-      setLoading(true);
-      const { data, error } = await supabase
-        .from("companies")
-        .select("*")
-        .order("created_at", { ascending: false });
-      if (!error) setCompanies(data || []);
-      setLoading(false);
-    }
+    let mounted = true;
+
+    const fetchCompanies = async () => {
+      try {
+        setCompaniesLoading(true);
+        setCompaniesError(null);
+
+        const supabase = createClientComponentClient();
+
+        const { data: companiesData, error: companiesError } = await supabase
+          .from('companies')
+          .select('*')
+          .order('created_at', { ascending: false });
+
+        if (companiesError) {
+          throw new Error(`Companies fetch error: ${companiesError.message}`);
+        }
+
+        if (mounted) {
+          setCompanies(companiesData || []);
+        }
+      } catch (err) {
+        console.error('Companies fetch error:', err);
+        if (mounted) {
+          setCompaniesError(err instanceof Error ? err.message : 'An unknown error occurred');
+          toast.error('Failed to fetch companies data');
+        }
+      } finally {
+        if (mounted) {
+          setCompaniesLoading(false);
+        }
+      }
+    };
+
     fetchCompanies();
+
+    return () => {
+      mounted = false;
+    };
   }, []);
 
-  async function approveCompany(id: number) {
-    const { error } = await supabase
-      .from("companies")
-      .update({ status: "Active" })
-      .eq("id", id);
-    if (!error) {
-      setCompanies((prev) =>
-        prev.map((c) => (c.id === id ? { ...c, status: "Active" } : c))
-      );
+  useEffect(() => {
+    let mounted = true;
+
+    const fetchRegistrationRequests = async () => {
+      try {
+        setRequestsLoading(true);
+        setRequestsError(null);
+
+        const supabase = createClientComponentClient();
+
+        const { data: requestsData, error: requestsError } = await supabase
+          .from('company_registration_requests')
+          .select('*')
+          .order('created_at', { ascending: false });
+
+        if (requestsError) {
+          throw new Error(`Registration requests fetch error: ${requestsError.message}`);
+        }
+
+        if (mounted) {
+          setRegistrationRequests(requestsData || []);
+        }
+      } catch (err) {
+        console.error('Registration requests fetch error:', err);
+        if (mounted) {
+          setRequestsError(err instanceof Error ? err.message : 'An unknown error occurred');
+          toast.error('Failed to fetch registration requests');
+        }
+      } finally {
+        if (mounted) {
+          setRequestsLoading(false);
+        }
+      }
+    };
+
+    fetchRegistrationRequests();
+
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  const handleApproveRequest = async (requestId: string) => {
+    try {
+      setIsLoading(true)
+
+      const response = await fetch('/api/companies/approve', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ requestId }),
+      })
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to approve company')
+      }
+
+      // Show success message with the temporary password
+      toast.success('Company approved successfully', {
+        description: `Temporary password: ${data.password}\nPlease save this password and share it with the company.`
+      })
+
+      // Refresh the lists
+      const supabase = createClientComponentClient()
+      const [requestsResponse, companiesResponse] = await Promise.all([
+        supabase
+          .from('company_registration_requests')
+          .select('*')
+          .order('created_at', { ascending: false }),
+        supabase
+          .from('companies')
+          .select('*')
+          .order('created_at', { ascending: false })
+      ])
+
+      if (requestsResponse.error) {
+        throw new Error('Failed to refresh requests list')
+      }
+
+      if (companiesResponse.error) {
+        throw new Error('Failed to refresh companies list')
+      }
+
+      setRegistrationRequests(requestsResponse.data || [])
+      setCompanies(companiesResponse.data || [])
+    } catch (error) {
+      console.error('Error in handleApproveRequest:', error)
+      toast.error('Failed to approve company', {
+        description: error instanceof Error ? error.message : 'An unexpected error occurred'
+      })
+    } finally {
+      setIsLoading(false)
     }
   }
 
-  async function deleteCompany(id: number) {
-    const { error } = await supabase
-      .from("companies")
-      .delete()
-      .eq("id", id);
-    if (!error) {
-      setCompanies((prev) => prev.filter((c) => c.id !== id));
-      setModalOpen(false);
-      setSelectedCompany(null);
+  const handleRejectRequest = async (requestId: string) => {
+    try {
+      const supabase = createClientComponentClient()
+      
+      // 1. Get the request details first
+      const { data: requestData, error: fetchError } = await supabase
+        .from('company_registration_requests')
+        .select('*')
+        .eq('id', requestId)
+        .single()
+
+      if (fetchError) {
+        console.error('Fetch Error:', fetchError)
+        throw new Error('Failed to fetch request details')
+      }
+
+      if (!requestData) {
+        throw new Error('Request not found')
+      }
+
+      // 2. Delete the company if it exists
+      const { error: deleteError } = await supabase
+        .from('companies')
+        .delete()
+        .eq('email', requestData.contact_email)
+
+      if (deleteError) {
+        console.error('Company Delete Error:', deleteError)
+        // Continue with rejection even if company deletion fails
+      }
+
+      // 3. Update the request status to rejected
+      const { error: updateError } = await supabase
+        .from('company_registration_requests')
+        .update({ status: 'rejected' })
+        .eq('id', requestId)
+
+      if (updateError) {
+        console.error('Update Error:', updateError)
+        throw new Error('Failed to update request status')
+      }
+
+      toast.success('Registration request rejected and company record deleted')
+      
+      // 4. Refresh both lists
+      const [requestsResponse, companiesResponse] = await Promise.all([
+        supabase
+          .from('company_registration_requests')
+          .select('*')
+          .order('created_at', { ascending: false }),
+        supabase
+          .from('companies')
+          .select('*')
+          .order('created_at', { ascending: false })
+      ])
+
+      if (requestsResponse.error) {
+        console.error('Requests Refresh Error:', requestsResponse.error)
+        throw new Error('Failed to refresh requests list')
+      }
+
+      if (companiesResponse.error) {
+        console.error('Companies Refresh Error:', companiesResponse.error)
+        throw new Error('Failed to refresh companies list')
+      }
+
+      setRegistrationRequests(requestsResponse.data || [])
+      setCompanies(companiesResponse.data || [])
+    } catch (error) {
+      console.error('Error in handleRejectRequest:', error)
+      toast.error(error instanceof Error ? error.message : 'Failed to reject registration request')
     }
   }
+
+  const handleViewDetails = (company: Company) => {
+    setSelectedCompany(company);
+    setShowDetails(true);
+  };
+
+  const handleEdit = (company: Company) => {
+    router.push(`/admin/companies/${company.id}/edit`);
+  };
+
+  const handleDelete = async (companyId: string) => {
+    try {
+      const supabase = createClientComponentClient();
+      const { error } = await supabase
+        .from('companies')
+        .delete()
+        .eq('id', companyId);
+
+      if (error) throw error;
+
+      toast.success('Company deleted successfully');
+      setCompanies((prev) => prev.filter((c) => c.id !== companyId));
+    } catch (error) {
+      console.error('Error deleting company:', error);
+      toast.error('Failed to delete company');
+    }
+  };
 
   function openModal(company: Company) {
     setSelectedCompany(company);
@@ -175,7 +492,7 @@ export default function AdminCompaniesPage() {
   const handleAddCompany = (e: React.FormEvent) => {
     e.preventDefault();
     const newCompany: Company = {
-      id: companies.length + 1,
+      id: companies.length + 1 + "",
       name: form.name,
       email: form.email,
       industry: form.industry,
@@ -184,7 +501,7 @@ export default function AdminCompaniesPage() {
       revenue: Number(form.revenue),
       offers: Number(form.offers),
       status: form.status,
-      joined: new Date().toISOString().split('T')[0]
+      created_at: new Date().toISOString().split('T')[0]
     };
     setCompanies([...companies, newCompany]);
     setForm({
@@ -204,21 +521,52 @@ export default function AdminCompaniesPage() {
     }, 1200);
   };
 
-  const handleViewDetails = (company: Company) => {
-    setSelectedCompany(company);
-    setShowDetails(true);
-  };
-
-  const handleEdit = (company: Company) => {
-    router.push(`/admin/companies/${company.id}/edit`);
-  };
-
   const filteredCompanies = companies.filter((c) =>
     c.name.toLowerCase().includes(search.toLowerCase()) ||
     c.email.toLowerCase().includes(search.toLowerCase())
   );
 
-  if (loading) return <div className="p-8 text-center">Loading...</div>;
+  const handleViewRequestDetails = (request: RegistrationRequest) => {
+    setSelectedRequest(request)
+    setShowRequestDetails(true)
+  }
+
+  if (companiesLoading) {
+    return (
+      <div className="container py-8">
+        <div className="flex items-center justify-center">
+          <div className="text-center">
+            <div className="text-lg font-medium">Loading Companies...</div>
+            <div className="text-sm text-muted-foreground">Please wait while we fetch the data</div>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  if (companiesError) {
+    return (
+      <div className="container py-8">
+        <div className="flex items-center justify-center">
+          <div className="text-center">
+            <div className="text-lg font-medium text-red-600">Error</div>
+            <div className="text-sm text-muted-foreground">{companiesError}</div>
+            <Button 
+              variant="outline" 
+              className="mt-4"
+              onClick={() => {
+                setCompaniesError(null);
+                setCompaniesLoading(true);
+                setCompanies([]);
+              }}
+            >
+              Retry
+            </Button>
+          </div>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="container py-8">
@@ -250,7 +598,7 @@ export default function AdminCompaniesPage() {
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground">Total Companies</p>
-                  <p className="text-2xl font-bold">{companyAnalytics.totalCompanies}</p>
+                  <p className="text-2xl font-bold">{companies.length}</p>
                 </div>
               </div>
               <div className="flex items-center space-x-4 p-4 border rounded-lg">
@@ -259,7 +607,7 @@ export default function AdminCompaniesPage() {
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground">Active Companies</p>
-                  <p className="text-2xl font-bold">{companyAnalytics.activeCompanies}</p>
+                  <p className="text-2xl font-bold">{companies.filter(c => c.status === 'Active').length}</p>
                 </div>
               </div>
               <div className="flex items-center space-x-4 p-4 border rounded-lg">
@@ -268,7 +616,7 @@ export default function AdminCompaniesPage() {
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground">Total Employees</p>
-                  <p className="text-2xl font-bold">{companyAnalytics.totalEmployees}</p>
+                  <p className="text-2xl font-bold">{companies.reduce((sum, c) => sum + c.employees, 0)}</p>
                 </div>
               </div>
               <div className="flex items-center space-x-4 p-4 border rounded-lg">
@@ -404,7 +752,7 @@ export default function AdminCompaniesPage() {
                     <TableHead>Employees</TableHead>
                     <TableHead>Revenue</TableHead>
                     <TableHead>Offers</TableHead>
-                    <TableHead>Joined</TableHead>
+                    <TableHead>Created</TableHead>
                     <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -429,14 +777,19 @@ export default function AdminCompaniesPage() {
                       <TableCell>{formatNumber(company.employees)}</TableCell>
                       <TableCell>${formatNumber(company.revenue)}</TableCell>
                       <TableCell>{company.offers}</TableCell>
-                      <TableCell>{new Date(company.joined).toLocaleDateString()}</TableCell>
+                      <TableCell>{new Date(company.created_at).toLocaleDateString()}</TableCell>
                       <TableCell className="text-right">
-                        <Button variant="ghost" size="sm" onClick={() => handleEdit(company)}>
-                          <Edit2 className="h-4 w-4" />
-                        </Button>
-                        <Button variant="ghost" size="sm" onClick={() => deleteCompany(company.id)}>
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
+                        <div className="flex justify-end space-x-2">
+                          <Button variant="ghost" size="sm" onClick={() => handleViewDetails(company)}>
+                            <Eye className="h-4 w-4" />
+                          </Button>
+                          <Button variant="ghost" size="sm" onClick={() => handleEdit(company)}>
+                            <Edit2 className="h-4 w-4" />
+                          </Button>
+                          <Button variant="ghost" size="sm" onClick={() => handleDelete(company.id)}>
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
                       </TableCell>
                     </TableRow>
                   ))}
@@ -515,6 +868,218 @@ export default function AdminCompaniesPage() {
           </div>
         </div>
       )}
+
+      {/* Registration Requests */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle>Registration Requests</CardTitle>
+              <CardDescription>Review and manage company registration requests</CardDescription>
+            </div>
+            <div className="flex items-center space-x-4">
+              <div className="relative">
+                <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Search requests..."
+                  className="pl-8"
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                />
+              </div>
+              <Button variant="outline">
+                <Filter className="mr-2 h-4 w-4" />
+                Filter
+              </Button>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent>
+          {requestsLoading ? (
+            <div className="flex items-center justify-center py-8">
+              <div className="text-center">
+                <div className="text-lg font-medium">Loading Registration Requests...</div>
+                <div className="text-sm text-muted-foreground">Please wait while we fetch the data</div>
+              </div>
+            </div>
+          ) : requestsError ? (
+            <div className="flex items-center justify-center py-8">
+              <div className="text-center">
+                <div className="text-lg font-medium text-red-600">Error</div>
+                <div className="text-sm text-muted-foreground">{requestsError}</div>
+                <Button 
+                  variant="outline" 
+                  className="mt-4"
+                  onClick={() => {
+                    setRequestsError(null)
+                    setRequestsLoading(true)
+                    setRegistrationRequests([])
+                  }}
+                >
+                  Retry
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="w-[200px]">Company</TableHead>
+                  <TableHead>Industry</TableHead>
+                  <TableHead>Contact</TableHead>
+                  <TableHead>Location</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Submitted</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {registrationRequests.map((request) => (
+                  <TableRow key={request.id}>
+                    <TableCell className="font-medium">
+                      <div className="flex flex-col">
+                        <span>{request.name}</span>
+                        <span className="text-xs text-muted-foreground">{request.website}</span>
+                      </div>
+                    </TableCell>
+                    <TableCell>{request.industry}</TableCell>
+                    <TableCell>
+                      <div className="flex flex-col">
+                        <span>{request.contact_name}</span>
+                        <span className="text-xs text-muted-foreground">{request.contact_email}</span>
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex flex-col">
+                        <span>{request.city}, {request.state}</span>
+                        <span className="text-xs text-muted-foreground">{request.country}</span>
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${
+                        request.status === 'pending' ? 'bg-yellow-100 text-yellow-800' : 
+                        request.status === 'approved' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                      }`}>
+                        {request.status}
+                      </span>
+                    </TableCell>
+                    <TableCell>{new Date(request.created_at).toLocaleDateString()}</TableCell>
+                    <TableCell className="text-right">
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="sm">
+                            <MoreHorizontal className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem onClick={() => handleViewRequestDetails(request)}>
+                            <Eye className="mr-2 h-4 w-4" />
+                            View Details
+                          </DropdownMenuItem>
+                          <DropdownMenuItem 
+                            onClick={() => handleRejectRequest(request.id)}
+                            className="text-red-600"
+                          >
+                            <X className="mr-2 h-4 w-4" />
+                            Reject
+                          </DropdownMenuItem>
+                          <DropdownMenuItem 
+                            onClick={() => handleApproveRequest(request.id)}
+                            className="text-green-600"
+                          >
+                            <Check className="mr-2 h-4 w-4" />
+                            Approve
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Add the Registration Request Details Modal */}
+      {selectedRequest && (
+        <RegistrationRequestDetailsModal
+          request={selectedRequest}
+          isOpen={showRequestDetails}
+          onClose={() => {
+            setShowRequestDetails(false)
+            setSelectedRequest(null)
+          }}
+        />
+      )}
+
+      {/* Company Details Modal */}
+      <Dialog open={showDetails} onOpenChange={setShowDetails}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Company Details</DialogTitle>
+          </DialogHeader>
+          {selectedCompany && (
+            <div className="space-y-6">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <h3 className="text-sm font-medium text-muted-foreground">Company Name</h3>
+                  <p className="mt-1">{selectedCompany.name}</p>
+                </div>
+                <div>
+                  <h3 className="text-sm font-medium text-muted-foreground">Industry</h3>
+                  <p className="mt-1">{selectedCompany.industry}</p>
+                </div>
+                <div>
+                  <h3 className="text-sm font-medium text-muted-foreground">Email</h3>
+                  <p className="mt-1">{selectedCompany.email}</p>
+                </div>
+                <div>
+                  <h3 className="text-sm font-medium text-muted-foreground">Location</h3>
+                  <p className="mt-1">{selectedCompany.location}</p>
+                </div>
+                <div>
+                  <h3 className="text-sm font-medium text-muted-foreground">Employees</h3>
+                  <p className="mt-1">{selectedCompany.employees}</p>
+                </div>
+                <div>
+                  <h3 className="text-sm font-medium text-muted-foreground">Revenue</h3>
+                  <p className="mt-1">${formatNumber(selectedCompany.revenue)}</p>
+                </div>
+                <div>
+                  <h3 className="text-sm font-medium text-muted-foreground">Offers</h3>
+                  <p className="mt-1">{selectedCompany.offers}</p>
+                </div>
+                <div>
+                  <h3 className="text-sm font-medium text-muted-foreground">Status</h3>
+                  <p className="mt-1">
+                    <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${
+                      selectedCompany.status === "Active" ? "bg-green-100 text-green-800" : "bg-yellow-100 text-yellow-800"
+                    }`}>
+                      {selectedCompany.status}
+                    </span>
+                  </p>
+                </div>
+                <div>
+                  <h3 className="text-sm font-medium text-muted-foreground">Created Date</h3>
+                  <p className="mt-1">{new Date(selectedCompany.created_at).toLocaleDateString()}</p>
+                </div>
+              </div>
+
+              <Separator />
+
+              <div className="flex justify-end space-x-2">
+                <Button variant="outline" onClick={() => setShowDetails(false)}>
+                  Close
+                </Button>
+                <Button onClick={() => handleEdit(selectedCompany)}>
+                  Edit Company
+                </Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

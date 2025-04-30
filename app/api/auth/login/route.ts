@@ -1,39 +1,52 @@
-import { NextResponse } from "next/server"
-import prisma from "@/lib/prisma"
-import { generateOTP, sendOTPEmail } from "@/lib/auth-utils"
+import { NextResponse } from 'next/server'
+import { supabase } from '@/lib/supabase'
+import { generateOTP } from '@/lib/auth-utils'
 
-export async function POST(request: Request) {
+export async function POST(req: Request) {
   try {
-    const { email } = await request.json()
+    const { email, password } = await req.json()
 
-    // Check if user exists
-    const user = await prisma.user.findUnique({
-      where: { email },
+    // Sign in with Supabase Auth
+    const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+      email,
+      password,
     })
 
-    if (!user) {
-      return NextResponse.json({ error: "User not found. Please register first." }, { status: 404 })
+    if (authError) {
+      return NextResponse.json(
+        { error: authError.message },
+        { status: 400 }
+      )
     }
 
-    // Generate OTP
-    const otpCode = generateOTP()
-    const expiresAt = new Date(Date.now() + 10 * 60 * 1000) // 10 minutes
+    // Generate and store OTP
+    const otp = generateOTP()
+    const { error: otpError } = await supabase
+      .from('otp_verifications')
+      .insert([
+        {
+          user_id: authData.user?.id,
+          otp,
+          expires_at: new Date(Date.now() + 15 * 60 * 1000).toISOString(), // 15 minutes
+        }
+      ])
 
-    // Save OTP to database
-    await prisma.otpVerification.create({
-      data: {
-        email,
-        otpCode,
-        expiresAt,
-      },
+    if (otpError) {
+      return NextResponse.json(
+        { error: otpError.message },
+        { status: 400 }
+      )
+    }
+
+    return NextResponse.json({ 
+      message: 'OTP sent successfully',
+      userId: authData.user?.id 
     })
-
-    // Send OTP email
-    await sendOTPEmail(email, otpCode)
-
-    return NextResponse.json({ success: true })
   } catch (error) {
-    console.error("Login error:", error)
-    return NextResponse.json({ error: "Something went wrong. Please try again." }, { status: 500 })
+    console.error('Login error:', error)
+    return NextResponse.json(
+      { error: 'Internal server error' },
+      { status: 500 }
+    )
   }
 }

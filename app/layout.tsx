@@ -3,6 +3,7 @@ import { Inter } from "next/font/google"
 import "./globals.css"
 import { NavWrapper } from "@/components/layout/nav-wrapper"
 import { ThemeProvider } from "@/components/theme-provider"
+import { Toaster } from "sonner"
 
 const inter = Inter({ subsets: ["latin"] })
 
@@ -29,6 +30,7 @@ export default function RootLayout({
             <NavWrapper />
             <main className="flex-1">{children}</main>
           </div>
+          <Toaster richColors position="top-center" />
         </ThemeProvider>
       </body>
     </html>

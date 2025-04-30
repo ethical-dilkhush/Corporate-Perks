@@ -1,50 +1,87 @@
-import { NextResponse } from "next/server"
-import prisma from "@/lib/prisma"
-import { generateOTP, sendOTPEmail } from "@/lib/auth-utils"
+import { NextResponse } from 'next/server'
+import { supabase } from '@/lib/supabase'
+import { generateOTP } from '@/lib/auth-utils'
 
-export async function POST(request: Request) {
+export async function POST(req: Request) {
   try {
-    const { email, name } = await request.json()
+    const { email, password, name, role } = await req.json()
 
     // Check if user already exists
-    const existingUser = await prisma.user.findUnique({
-      where: { email },
-    })
+    const { data: existingUser } = await supabase
+      .from('users')
+      .select('*')
+      .eq('email', email)
+      .single()
 
     if (existingUser) {
-      if (existingUser.emailVerified) {
-        return NextResponse.json({ error: "User already exists. Please login instead." }, { status: 400 })
-      }
-    } else {
-      // Create new user
-      await prisma.user.create({
-        data: {
-          email,
-          name,
-          role: "EMPLOYEE",
-        },
-      })
+      return NextResponse.json(
+        { error: 'User already exists' },
+        { status: 400 }
+      )
     }
 
-    // Generate OTP
-    const otpCode = generateOTP()
-    const expiresAt = new Date(Date.now() + 10 * 60 * 1000) // 10 minutes
-
-    // Save OTP to database
-    await prisma.otpVerification.create({
-      data: {
-        email,
-        otpCode,
-        expiresAt,
-      },
+    // Create user in Supabase Auth
+    const { data: authData, error: authError } = await supabase.auth.signUp({
+      email,
+      password,
     })
 
-    // Send OTP email
-    await sendOTPEmail(email, otpCode)
+    if (authError) {
+      return NextResponse.json(
+        { error: authError.message },
+        { status: 400 }
+      )
+      }
 
-    return NextResponse.json({ success: true })
+    // Create user profile in users table
+    const { data: userData, error: userError } = await supabase
+      .from('users')
+      .insert([
+        {
+          id: authData.user?.id,
+          email,
+          name,
+          role,
+        }
+      ])
+      .select()
+      .single()
+
+    if (userError) {
+      return NextResponse.json(
+        { error: userError.message },
+        { status: 400 }
+      )
+    }
+
+    // Generate and store OTP
+    const otp = generateOTP()
+    const { error: otpError } = await supabase
+      .from('otp_verifications')
+      .insert([
+        {
+          user_id: authData.user?.id,
+          otp,
+          expires_at: new Date(Date.now() + 15 * 60 * 1000).toISOString(), // 15 minutes
+        }
+      ])
+
+    if (otpError) {
+      return NextResponse.json(
+        { error: otpError.message },
+        { status: 400 }
+      )
+    }
+
+    return NextResponse.json({ 
+      message: 'User registered successfully. Please verify your email.',
+      userId: authData.user?.id 
+    })
   } catch (error) {
-    console.error("Registration error:", error)
-    return NextResponse.json({ error: "Something went wrong. Please try again." }, { status: 500 })
+    console.error('Registration error:', error)
+    return NextResponse.json(
+      { error: 'Internal server error' },
+      { status: 500 }
+    )
   }
 }
