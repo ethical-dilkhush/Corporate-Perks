@@ -6,7 +6,6 @@ import { Building, User, Shield, Mail, Lock } from "lucide-react"
 import { useState } from "react"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
 import { useRouter } from "next/navigation"
 import { toast } from "sonner"
 import { Label } from "@/components/ui/label"
@@ -17,41 +16,34 @@ export default function LoginPage() {
   const [password, setPassword] = useState("")
   const [loading, setLoading] = useState(false)
   const router = useRouter()
-  const supabase = createClientComponentClient()
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
 
     try {
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
+      const response = await fetch('/api/auth/employee/login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          email,
+          password,
+        }),
       })
 
-      if (error) throw error
+      const data = await response.json()
 
-      if (data.user) {
-        // Check if user is an approved employee
-        const { data: employeeData, error: employeeError } = await supabase
-          .from('employees')
-          .select('status')
-          .eq('email', email)
-          .single()
-
-        if (employeeError) throw employeeError
-
-        if (!employeeData || employeeData.status !== 'approved') {
-          await supabase.auth.signOut()
-          toast.error('Your account is not approved yet')
-          return
-        }
-
-        router.push('/company/employees')
-        router.refresh()
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to login')
       }
+
+      toast.success('Login successful')
+      router.push('/employee')
+      router.refresh()
     } catch (error) {
-      toast.error('Invalid email or password')
+      toast.error(error instanceof Error ? error.message : 'Invalid email or password')
     } finally {
       setLoading(false)
     }

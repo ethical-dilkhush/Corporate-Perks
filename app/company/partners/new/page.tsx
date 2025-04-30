@@ -186,17 +186,19 @@ export default function NewPartnerPage() {
         created_at: new Date().toISOString(),
       }
 
+      console.log("Attempting to insert partner data:", partnerData);
       const { error, data } = await supabase
         .from("partners")
         .insert([partnerData])
         .select()
 
       if (error) {
-        console.error('Database error:', error)
+        console.error('Database insert error:', error)
         throw new Error(`Failed to insert partner: ${error.message}`)
       }
 
       if (data) {
+        console.log("Partner inserted successfully:", data);
         setSuccess(true)
         toast({
           title: "Partner added",
@@ -205,9 +207,11 @@ export default function NewPartnerPage() {
         form.reset()
         setLogoPreview(null)
         setSelectedFile(null)
+        // Optional: Redirect after success?
+        // router.push('/company/dashboard'); 
       }
     } catch (error) {
-      console.error("Error:", error)
+      console.error("onSubmit Error:", error)
       const errorMessage = error instanceof Error ? error.message : "Something went wrong. Please try again."
       setErrorMsg(errorMessage)
       toast({
@@ -250,6 +254,7 @@ export default function NewPartnerPage() {
           <CardContent>
             <Form {...form}>
               <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+                {/* Form Fields - Company Name, Business Type */}
                 <div className="grid gap-4 md:grid-cols-2">
                   <FormField
                     control={form.control}
@@ -298,6 +303,7 @@ export default function NewPartnerPage() {
                   />
                 </div>
 
+                {/* Form Fields - Email, Phone */}
                 <div className="grid gap-4 md:grid-cols-2">
                   <FormField
                     control={form.control}
@@ -338,6 +344,7 @@ export default function NewPartnerPage() {
                   />
                 </div>
 
+                {/* Form Fields - Employee Count, Partnership Type */}
                 <div className="grid gap-4 md:grid-cols-2">
                   <FormField
                     control={form.control}
@@ -387,6 +394,7 @@ export default function NewPartnerPage() {
                   />
                 </div>
 
+                {/* Form Field - Website */}
                 <FormField
                   control={form.control}
                   name="website"
@@ -408,6 +416,7 @@ export default function NewPartnerPage() {
                   )}
                 />
 
+                {/* Form Field - Additional Note */}
                 <FormField
                   control={form.control}
                   name="additionalNote"
@@ -427,6 +436,7 @@ export default function NewPartnerPage() {
                   )}
                 />
 
+                {/* Address Section */}
                 <div className="space-y-4">
                   <h3 className="text-lg font-medium">Address</h3>
                   <div className="grid gap-4 md:grid-cols-2">
@@ -488,6 +498,7 @@ export default function NewPartnerPage() {
                   </div>
                 </div>
 
+                {/* Form Actions */}
                 <div className="flex justify-end gap-4">
                   <Button
                     type="button"
@@ -515,6 +526,7 @@ export default function NewPartnerPage() {
           </CardContent>
         </Card>
 
+        {/* Right Column - Logo Upload & Tips */}
         <div className="space-y-6">
           <Card>
             <CardHeader>

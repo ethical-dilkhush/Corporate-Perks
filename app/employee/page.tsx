@@ -9,57 +9,56 @@ import { PartnersSection } from "@/components/partners-section";
 import { Sparkles, Gift, ArrowRight } from "lucide-react";
 import { Footer } from "@/components/footer";
 import Image from "next/image";
+import { toast } from "sonner";
+import { useRouter } from "next/navigation";
+import { useEmployee } from "@/contexts/employee-context";
 
-// =============================================
-// Mock Data Section
-// =============================================
-const offers = [
-  {
-    id: "1",
-    title: "20% off at TechGadgets",
-    company: "TechGadgets Inc.",
-    description: "Get 20% off on all electronics and accessories",
-    discountValue: 20,
-    validUntil: "2025-06-30",
-    category: "Electronics",
-    image: "/modern-electronics-retail.png",
-    logo: "https://upload.wikimedia.org/wikipedia/commons/4/44/Microsoft_logo.svg",
-    validUntilFormatted: "6/30/2025"
-  },
-  {
-    id: "2",
-    title: "50% off Premium Coffee",
-    company: "BeanBrew Coffee",
-    description: "Enjoy premium coffee at half the price",
-    discountValue: 50,
-    validUntil: "2025-05-15",
-    category: "Food & Beverage",
-    image: "/cozy-corner-cafe.png",
-    logo: "https://upload.wikimedia.org/wikipedia/commons/2/2f/Google_2015_logo.svg",
-  },
-  {
-    id: "3",
-    title: "15% off Office Supplies",
-    company: "OfficeMax",
-    description: "Save on all office essentials",
-    discountValue: 15,
-    validUntil: "2025-07-01",
-    category: "Office Supplies",
-    image: "/placeholder.svg",
-    logo: "https://upload.wikimedia.org/wikipedia/commons/a/a9/Amazon_logo.svg",
-  },
-];
+interface Offer {
+  id: string;
+  title: string;
+  company_name: string;
+  description: string;
+  discount_value: number;
+  valid_until: string;
+  category: string;
+  image_url: string;
+  company_logo: string;
+  validUntilFormatted: string;
+}
 
-// =============================================
-// Main Component
-// =============================================
+interface Employee {
+  id: string;
+  email: string;
+  name: string;
+}
+
 export default function EmployeeHomePage() {
-  const employeeName = "Employee Name";
+  const { employee, loading } = useEmployee();
   const [year, setYear] = useState<string>("");
+  const [offers, setOffers] = useState<Offer[]>([]);
+  const [offersLoading, setOffersLoading] = useState(true);
+  const router = useRouter();
 
   useEffect(() => {
     setYear(new Date().getFullYear().toString());
+    fetchOffers();
   }, []);
+
+  const fetchOffers = async () => {
+    try {
+      const response = await fetch('/api/offers');
+      if (!response.ok) {
+        throw new Error('Failed to fetch offers');
+      }
+      const data = await response.json();
+      setOffers(data);
+    } catch (error) {
+      toast.error('Failed to load offers');
+      console.error('Error fetching offers:', error);
+    } finally {
+      setOffersLoading(false);
+    }
+  };
 
   return (
     <div className="flex flex-col min-h-screen bg-background">
@@ -82,9 +81,15 @@ export default function EmployeeHomePage() {
           
           {/* Hero Text Section */}
           <div className="w-full md:w-1/2 flex flex-col items-center md:items-start text-center md:text-left gap-4 px-4 md:px-16">
-            <h1 className="text-4xl md:text-6xl font-extrabold text-foreground drop-shadow">
-              Hi {employeeName}
-            </h1>
+            <div className="min-h-[4rem]"> {/* Fixed height container for smooth transition */}
+              {loading ? (
+                <div className="h-12 w-48 bg-muted animate-pulse rounded-lg"></div>
+              ) : (
+                <h1 className="text-4xl md:text-6xl font-extrabold text-foreground drop-shadow animate-fade-in">
+                  Hi {employee?.name}
+                </h1>
+              )}
+            </div>
             <h2 className="text-2xl md:text-3xl font-semibold text-foreground">
               Welcome to the <span className="text-foreground">Corporate Offers Portal!</span>
             </h2>
@@ -114,45 +119,59 @@ export default function EmployeeHomePage() {
               </Button>
             </Link>
           </div>
-          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-            {offers.map((offer) => (
-              <Link 
-                key={offer.id} 
-                href={`/employee/dashboard/offers#${offer.id}`}
-                className="block"
-              >
-                <div
-                  className="bg-card rounded-xl border border-border p-6 flex flex-col justify-between min-h-[220px] hover:shadow transition cursor-pointer"
+          
+          {offersLoading ? (
+            <div className="text-center py-8">Loading offers...</div>
+          ) : offers.length === 0 ? (
+            <div className="text-center py-8">No offers available at the moment.</div>
+          ) : (
+            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+              {offers.map((offer) => (
+                <Link 
+                  key={offer.id} 
+                  href={`/employee/dashboard/offers#${offer.id}`}
+                  className="block"
                 >
-                  {/* Offer Header */}
-                  <div className="flex items-center gap-4 mb-2">
-                    <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center overflow-hidden">
-                      <img src={offer.image} alt={offer.company} className="w-12 h-12 object-cover" />
+                  <div
+                    className="bg-card rounded-xl border border-border p-6 flex flex-col justify-between min-h-[220px] hover:shadow transition cursor-pointer"
+                  >
+                    {/* Offer Header */}
+                    <div className="flex items-center gap-4 mb-2">
+                      <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center overflow-hidden">
+                        <img 
+                          src={offer.image_url || '/placeholder.svg'} 
+                          alt={offer.company_name} 
+                          className="w-12 h-12 object-cover" 
+                        />
+                      </div>
+                      <div className="flex-1">
+                        <div className="font-bold text-lg text-foreground">{offer.company_name}</div>
+                        <div className="text-sm text-muted-foreground">{offer.category}</div>
+                      </div>
+                      <Badge variant="secondary" className="text-lg font-semibold">
+                        {offer.discount_value}% OFF
+                      </Badge>
                     </div>
-                    <div>
-                      <div className="font-bold text-lg text-foreground">{offer.company}</div>
-                      <div className="text-sm text-muted-foreground">{offer.category}</div>
+
+                    {/* Offer Details */}
+                    <div className="flex items-center gap-2 mt-2 mb-2">
+                      <Gift className="w-5 h-5 text-primary" />
+                      <span className="font-medium text-foreground text-base">{offer.title}</span>
+                    </div>
+                    <div className="text-sm text-muted-foreground mb-2">{offer.description}</div>
+
+                    {/* Offer Footer */}
+                    <div className="flex items-center justify-between mt-4">
+                      <span className="text-xs text-muted-foreground">
+                        Valid until {offer.validUntilFormatted}
+                      </span>
+                      <ArrowRight className="w-5 h-5 text-muted-foreground" />
                     </div>
                   </div>
-
-                  {/* Offer Details */}
-                  <div className="flex items-center gap-2 mt-2 mb-2">
-                    <Gift className="w-5 h-5 text-primary" />
-                    <span className="font-medium text-foreground text-base">{offer.title}</span>
-                  </div>
-                  <div className="text-sm text-muted-foreground mb-2">{offer.description}</div>
-
-                  {/* Offer Footer */}
-                  <div className="flex items-center justify-between mt-4">
-                    <span className="text-xs text-muted-foreground">
-                      Valid until {offer.validUntilFormatted}
-                    </span>
-                    <ArrowRight className="w-5 h-5 text-muted-foreground" />
-                  </div>
-                </div>
-              </Link>
-            ))}
-          </div>
+                </Link>
+              ))}
+            </div>
+          )}
         </section>
 
         {/* =============================================

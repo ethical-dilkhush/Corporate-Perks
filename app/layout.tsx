@@ -4,6 +4,7 @@ import "./globals.css"
 import { NavWrapper } from "@/components/layout/nav-wrapper"
 import { ThemeProvider } from "@/components/theme-provider"
 import { Toaster } from "sonner"
+import { EmployeeProvider } from "@/contexts/employee-context"
 
 const inter = Inter({ subsets: ["latin"] })
 
@@ -26,11 +27,13 @@ export default function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
-          <div className="flex min-h-screen flex-col">
-            <NavWrapper />
-            <main className="flex-1">{children}</main>
-          </div>
-          <Toaster richColors position="top-center" />
+          <EmployeeProvider>
+            <div className="flex min-h-screen flex-col">
+              <NavWrapper />
+              <main className="flex-1">{children}</main>
+            </div>
+            <Toaster richColors position="top-center" />
+          </EmployeeProvider>
         </ThemeProvider>
       </body>
     </html>
