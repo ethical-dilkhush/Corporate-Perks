@@ -64,7 +64,7 @@ export function LoginForm({ role }: LoginFormProps) {
             description: "Successfully logged in to your company account."
           })
 
-          router.push('/company/dashboard')
+          router.push('/company')
           router.refresh()
         }
       } else {

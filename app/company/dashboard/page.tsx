@@ -83,50 +83,18 @@ export default function CompanyDashboardPage() {
           <div className="flex items-center space-x-2">
             <Button 
               variant="outline"
-              onClick={() => router.push("/company/partners/add")}
+              onClick={() => router.push("/company/partners/new")}
             >
               <Plus className="mr-2 h-4 w-4" />
               Add Partner
             </Button>
-            <Dialog open={isAddOfferOpen} onOpenChange={setIsAddOfferOpen}>
-              <DialogTrigger asChild>
-                <Button>
-                  <Plus className="mr-2 h-4 w-4" />
-                  New Offer
-                </Button>
-              </DialogTrigger>
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle>Create New Offer</DialogTitle>
-                  <DialogDescription>
-                    Create a new offer for your partner companies.
-                  </DialogDescription>
-                </DialogHeader>
-                <div className="grid gap-4 py-4">
-                  <div className="grid gap-2">
-                    <Label htmlFor="title">Offer Title</Label>
-                    <Input id="title" placeholder="Enter offer title" />
-                  </div>
-                  <div className="grid gap-2">
-                    <Label htmlFor="company">Partner Company</Label>
-                    <Input id="company" placeholder="Select partner company" />
-                  </div>
-                  <div className="grid gap-2">
-                    <Label htmlFor="discount">Discount Value</Label>
-                    <Input id="discount" placeholder="Enter discount value" />
-                  </div>
-                  <div className="grid gap-2">
-                    <Label htmlFor="validity">Validity Period</Label>
-                    <Input id="validity" placeholder="Enter validity period" />
-                  </div>
-                  <div className="grid gap-2">
-                    <Label htmlFor="description">Description</Label>
-                    <Textarea id="description" placeholder="Enter offer description" />
-                  </div>
-                  <Button type="submit">Create Offer</Button>
-                </div>
-              </DialogContent>
-            </Dialog>
+            <Button 
+              variant="outline"
+              onClick={() => router.push("/company/offers/new")}
+            >
+              <Plus className="mr-2 h-4 w-4" />
+              New Offer
+            </Button>
           </div>
         </div>
 
