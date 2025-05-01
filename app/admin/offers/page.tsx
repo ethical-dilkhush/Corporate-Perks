@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { Plus, Search, Filter, MoreHorizontal, Edit, Trash, Tag, Percent, Calendar, Building2, Edit2, Trash2, X, Eye } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -30,6 +30,7 @@ import { Badge } from "@/components/ui/badge"
 import { useToast } from "@/hooks/use-toast"
 import { Label } from "@/components/ui/label"
 import { formatNumber } from "@/lib/utils"
+import { supabase } from "@/lib/supabase"
 
 interface Offer {
   id: string
@@ -44,40 +45,20 @@ interface Offer {
   maxUsage: number
 }
 
-// Mock data for offers
-const mockOffers: Offer[] = [
-  {
-    id: "1",
-    title: "Summer Sale",
-    company: "TechCorp Inc.",
-    category: "Retail",
-    discount: 20,
-    status: "Active",
-    startDate: "2024-06-01",
-    endDate: "2024-08-31",
-    usage: 45,
-    maxUsage: 100
-  },
-  {
-    id: "2",
-    title: "Back to School",
-    company: "Global Solutions",
-    category: "Education",
-    discount: 15,
-    status: "Pending",
-    startDate: "2024-08-01",
-    endDate: "2024-09-30",
-    usage: 30,
-    maxUsage: 50
-  }
-]
+// Analytics interface for offers statistics
+interface OfferAnalytics {
+  totalOffers: number
+  activeOffers: number
+  expiredOffers: number
+  companyOffers: number
+}
 
-// Mock data for offer analytics
-const offerAnalytics = {
-  totalOffers: 45,
-  activeOffers: 30,
-  expiredOffers: 10,
-  companyOffers: 35,
+// Initial state for analytics
+const initialAnalytics: OfferAnalytics = {
+  totalOffers: 0,
+  activeOffers: 0,
+  expiredOffers: 0,
+  companyOffers: 0
 }
 
 interface OfferForm {
@@ -94,11 +75,13 @@ interface OfferForm {
 export default function AdminOffersPage() {
   const router = useRouter()
   const { toast } = useToast()
-  const [offers, setOffers] = useState<Offer[]>(mockOffers)
+  const [offers, setOffers] = useState<Offer[]>([])
   const [search, setSearch] = useState("")
   const [showViewModal, setShowViewModal] = useState(false)
   const [selectedOffer, setSelectedOffer] = useState<Offer | null>(null)
   const [showAddModal, setShowAddModal] = useState(false)
+  const [loading, setLoading] = useState(true)
+  const [offerAnalytics, setOfferAnalytics] = useState<OfferAnalytics>(initialAnalytics)
   const [form, setForm] = useState<OfferForm>({
     title: "",
     company: "",
@@ -112,15 +95,115 @@ export default function AdminOffersPage() {
   const [success, setSuccess] = useState(false)
   const [formError, setFormError] = useState('')
 
+  // Fetch data on component mount
+  useEffect(() => {
+    fetchOffers()
+  }, [])
+
+  // Function to fetch offers from Supabase
+  const fetchOffers = async () => {
+    try {
+      setLoading(true)
+      
+      // Fetch offers data
+      const { data: offersData, error: offersError } = await supabase
+        .from('offers')
+        .select('*, partners(company_name)')
+      
+      if (offersError) {
+        console.error('Error fetching offers:', offersError)
+        toast({
+          title: "Error",
+          description: "Failed to fetch offers data",
+          variant: "destructive",
+        })
+        return
+      }
+
+      // Fetch companies data for counting
+      const { data: companiesData, error: companiesError } = await supabase
+        .from('companies')
+        .select('id')
+      
+      if (companiesError) {
+        console.error('Error fetching companies:', companiesError)
+      }
+
+      // Format offers data
+      if (offersData) {
+        const formattedOffers: Offer[] = offersData.map(offer => {
+          // Determine status based on dates
+          const now = new Date()
+          const startDate = new Date(offer.start_date)
+          const endDate = new Date(offer.end_date)
+          
+          let status: "Active" | "Expired" | "Pending" = "Active"
+          if (now < startDate) {
+            status = "Pending"
+          } else if (now > endDate) {
+            status = "Expired"
+          }
+
+          return {
+            id: offer.id,
+            title: offer.title || "Untitled Offer",
+            company: offer.partners?.company_name || offer.partner_id || "Unknown",
+            category: offer.category || "General",
+            discount: offer.discount_value ? parseFloat(offer.discount_value) : 0,
+            status: offer.status || status,
+            startDate: offer.start_date || new Date().toISOString(),
+            endDate: offer.end_date || new Date(new Date().setMonth(new Date().getMonth() + 1)).toISOString(),
+            usage: offer.redemptions || 0,
+            maxUsage: offer.max_redemptions || 100
+          }
+        })
+
+        setOffers(formattedOffers)
+
+        // Calculate analytics
+        const activeOffers = formattedOffers.filter(offer => offer.status === "Active").length
+        const expiredOffers = formattedOffers.filter(offer => offer.status === "Expired").length
+        const companies = companiesData?.length || 0
+
+        setOfferAnalytics({
+          totalOffers: formattedOffers.length,
+          activeOffers,
+          expiredOffers,
+          companyOffers: companies
+        })
+      }
+    } catch (error) {
+      console.error('Error in fetchOffers:', error)
+      toast({
+        title: "Error",
+        description: "An unexpected error occurred",
+        variant: "destructive",
+      })
+    } finally {
+      setLoading(false)
+    }
+  }
+
   const handleDelete = async (id: string) => {
     try {
-      // TODO: Implement API call to delete offer
+      const { error } = await supabase
+        .from('offers')
+        .delete()
+        .eq('id', id)
+
+      if (error) {
+        throw error
+      }
+
+      // Update local state
       setOffers(offers.filter(offer => offer.id !== id))
+      
       toast({
         title: "Success",
         description: "Offer deleted successfully",
       })
     } catch (error) {
+      console.error('Error deleting offer:', error)
       toast({
         title: "Error",
         description: "Failed to delete offer",
@@ -131,7 +214,7 @@ export default function AdminOffersPage() {
 
   const filteredOffers = offers.filter(offer =>
     offer.title.toLowerCase().includes(search.toLowerCase()) ||
-    offer.company.toLowerCase().includes(search.toLowerCase())
+    offer.company.toString().toLowerCase().includes(search.toLowerCase())
   )
 
   const formatDate = (dateString: string) => {
@@ -152,36 +235,56 @@ export default function AdminOffersPage() {
     setForm({ ...form, [e.target.name]: e.target.value })
   }
 
-  const handleAddOffer = (e: React.FormEvent) => {
+  const handleAddOffer = async (e: React.FormEvent) => {
     e.preventDefault()
-    const newOffer: Offer = {
-      id: String(offers.length + 1),
-      title: form.title,
-      company: form.company,
-      category: form.category,
-      discount: Number(form.discount),
-      status: form.status,
-      startDate: form.startDate,
-      endDate: form.endDate,
-      usage: 0,
-      maxUsage: Number(form.maxUsage)
+    
+    try {
+      // Add the offer to Supabase
+      const { data, error } = await supabase
+        .from('offers')
+        .insert([{
+          title: form.title,
+          partner_id: form.company, // Assuming company is the partner_id
+          category: form.category,
+          discount_value: form.discount,
+          status: form.status,
+          start_date: form.startDate,
+          end_date: form.endDate,
+          max_redemptions: form.maxUsage,
+          redemptions: 0,
+          created_at: new Date().toISOString()
+        }])
+        .select()
+
+      if (error) {
+        console.error('Error adding offer:', error)
+        setFormError('Failed to add offer. Please try again.')
+        return
+      }
+
+      // Refresh the offers list
+      fetchOffers()
+      
+      // Reset form and show success
+      setForm({
+        title: "",
+        company: "",
+        category: "",
+        discount: "",
+        status: "Active",
+        startDate: "",
+        endDate: "",
+        maxUsage: ""
+      })
+      setSuccess(true)
+      setTimeout(() => {
+        setSuccess(false)
+        setShowAddModal(false)
+      }, 1200)
+    } catch (error) {
+      console.error('Error in handleAddOffer:', error)
+      setFormError('An unexpected error occurred')
     }
-    setOffers([...offers, newOffer])
-    setForm({
-      title: "",
-      company: "",
-      category: "",
-      discount: "",
-      status: "Active",
-      startDate: "",
-      endDate: "",
-      maxUsage: ""
-    })
-    setSuccess(true)
-    setTimeout(() => {
-      setSuccess(false)
-      setShowAddModal(false)
-    }, 1200)
   }
 
   return (
@@ -248,223 +351,285 @@ export default function AdminOffersPage() {
         <CardHeader className="border-b">
           <div className="flex items-center justify-between">
             <div>
-              <CardTitle>Offer List</CardTitle>
-              <CardDescription>View and manage all available offers</CardDescription>
+              <CardTitle>All Offers</CardTitle>
+              <CardDescription>Manage and monitor all offers</CardDescription>
             </div>
-            <div className="flex items-center space-x-2">
+            <div className="relative max-w-md">
+              <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
               <Input
                 placeholder="Search offers..."
-                className="w-[200px]"
+                className="pl-8 max-w-xs"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
               />
-              <Button variant="outline" size="sm">
-                <Filter className="h-4 w-4 mr-2" />
-                Filter
-              </Button>
             </div>
           </div>
         </CardHeader>
-        <CardContent>
-          <div className="w-full overflow-x-auto">
+        <CardContent className="p-0">
+          <div className="overflow-x-auto">
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Title</TableHead>
+                  <TableHead>Offer</TableHead>
                   <TableHead>Company</TableHead>
                   <TableHead>Category</TableHead>
                   <TableHead>Discount</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Usage</TableHead>
-                  <TableHead>Start Date</TableHead>
-                  <TableHead>End Date</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
+                  <TableHead>Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {offers.map((offer) => (
-                  <TableRow key={offer.id}>
-                    <TableCell>{offer.title}</TableCell>
-                    <TableCell>{offer.company}</TableCell>
-                    <TableCell>{offer.category}</TableCell>
-                    <TableCell>{offer.discount}%</TableCell>
-                    <TableCell>
-                      <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${
-                        offer.status === "Active" ? "bg-green-100 text-green-800" : 
-                        offer.status === "Expired" ? "bg-red-100 text-red-800" : 
-                        "bg-yellow-100 text-yellow-800"
-                      }`}>
-                        {offer.status}
-                      </span>
-                    </TableCell>
-                    <TableCell>{offer.usage}/{offer.maxUsage}</TableCell>
-                    <TableCell>{formatDate(offer.startDate)}</TableCell>
-                    <TableCell>{formatDate(offer.endDate)}</TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex justify-end space-x-2">
-                        <Button 
-                          variant="ghost" 
-                          size="sm" 
-                          className="hover:bg-blue-50"
-                          onClick={() => handleViewDetails(offer)}
-                        >
-                          <Eye className="h-4 w-4 text-blue-600" />
-                        </Button>
-                        <Button 
-                          variant="ghost" 
-                          size="sm" 
-                          className="hover:bg-green-50"
-                          onClick={() => handleEdit(offer)}
-                        >
-                          <Edit2 className="h-4 w-4 text-green-600" />
-                        </Button>
-                        <Button 
-                          variant="ghost" 
-                          size="sm" 
-                          className="hover:bg-red-50"
-                          onClick={() => handleDelete(offer.id)}
-                        >
-                          <Trash2 className="h-4 w-4 text-red-600" />
-                        </Button>
+                {loading ? (
+                  <TableRow>
+                    <TableCell colSpan={7} className="text-center py-10">
+                      <div className="flex justify-center">
+                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
                       </div>
                     </TableCell>
                   </TableRow>
-                ))}
+                ) : filteredOffers.length > 0 ? (
+                  filteredOffers.map((offer) => (
+                    <TableRow key={offer.id}>
+                      <TableCell className="font-medium">{offer.title}</TableCell>
+                      <TableCell>{offer.company}</TableCell>
+                      <TableCell>{offer.category}</TableCell>
+                      <TableCell>{offer.discount}%</TableCell>
+                      <TableCell>
+                        <Badge
+                          variant={
+                            offer.status === "Active" 
+                              ? "default" 
+                              : offer.status === "Pending" 
+                                ? "outline" 
+                                : "secondary"
+                          }
+                        >
+                          {offer.status}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        {offer.usage} / {offer.maxUsage}
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-2">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleViewDetails(offer)}
+                          >
+                            <Eye className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleEdit(offer)}
+                          >
+                            <Edit2 className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleDelete(offer.id)}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                ) : (
+                  <TableRow>
+                    <TableCell colSpan={7} className="text-center py-10 text-muted-foreground">
+                      No offers found. Try adjusting your search or adding a new offer.
+                    </TableCell>
+                  </TableRow>
+                )}
               </TableBody>
             </Table>
           </div>
         </CardContent>
       </Card>
 
+      {/* View Offer Modal */}
+      {showViewModal && selectedOffer && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+          <div className="bg-white rounded-lg shadow-lg p-6 w-full max-w-lg">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold">{selectedOffer.title}</h3>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setShowViewModal(false)}
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <p className="text-sm text-muted-foreground">Company</p>
+                  <p className="font-medium">{selectedOffer.company}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Category</p>
+                  <p className="font-medium">{selectedOffer.category}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Discount</p>
+                  <p className="font-medium">{selectedOffer.discount}%</p>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Status</p>
+                  <Badge
+                    variant={
+                      selectedOffer.status === "Active" 
+                        ? "default" 
+                        : selectedOffer.status === "Pending" 
+                          ? "outline" 
+                          : "secondary"
+                    }
+                  >
+                    {selectedOffer.status}
+                  </Badge>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Start Date</p>
+                  <p className="font-medium">{new Date(selectedOffer.startDate).toLocaleDateString()}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">End Date</p>
+                  <p className="font-medium">{new Date(selectedOffer.endDate).toLocaleDateString()}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Usage</p>
+                  <p className="font-medium">{selectedOffer.usage} / {selectedOffer.maxUsage}</p>
+                </div>
+              </div>
+              <div className="flex justify-end space-x-2 mt-4">
+                <Button
+                  variant="outline"
+                  onClick={() => setShowViewModal(false)}
+                >
+                  Close
+                </Button>
+                <Button onClick={() => handleEdit(selectedOffer)}>
+                  Edit
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Add Offer Modal */}
       {showAddModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 overflow-y-auto">
-          <div className="bg-white rounded-xl shadow-2xl p-8 w-full max-w-2xl relative border-2 border-blue-200 animate-fade-in max-h-[90vh] overflow-y-auto">
+          <div className="bg-white rounded-xl shadow-2xl p-8 w-full max-w-2xl relative border border-border max-h-[90vh] overflow-y-auto">
             <button
-              className="absolute top-3 right-3 text-blue-600 hover:text-blue-800"
+              className="absolute top-3 right-3 text-muted-foreground hover:text-foreground"
               onClick={() => setShowAddModal(false)}
               aria-label="Close"
             >
               <X className="h-6 w-6" />
             </button>
-            <h3 className="text-xl font-bold mb-2 text-blue-700">Add New Offer</h3>
+            <h3 className="text-xl font-bold mb-2">Add New Offer</h3>
             <form onSubmit={handleAddOffer} className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
+                <div>
                   <Label htmlFor="title">Offer Title</Label>
-                  <Input id="title" name="title" value={form.title} onChange={handleChange} required />
+                  <Input
+                    id="title"
+                    name="title"
+                    value={form.title}
+                    onChange={handleChange}
+                    required
+                    className="mt-1"
+                  />
                 </div>
-                <div className="space-y-2">
+                <div>
                   <Label htmlFor="company">Company</Label>
-                  <Input id="company" name="company" value={form.company} onChange={handleChange} required />
+                  <Input
+                    id="company"
+                    name="company"
+                    value={form.company}
+                    onChange={handleChange}
+                    required
+                    className="mt-1"
+                  />
                 </div>
-                <div className="space-y-2">
+                <div>
                   <Label htmlFor="category">Category</Label>
-                  <Input id="category" name="category" value={form.category} onChange={handleChange} required />
+                  <Input
+                    id="category"
+                    name="category"
+                    value={form.category}
+                    onChange={handleChange}
+                    required
+                    className="mt-1"
+                  />
                 </div>
-                <div className="space-y-2">
+                <div>
                   <Label htmlFor="discount">Discount (%)</Label>
-                  <Input id="discount" name="discount" type="number" min="0" max="100" value={form.discount} onChange={handleChange} required />
+                  <Input
+                    id="discount"
+                    name="discount"
+                    type="number"
+                    value={form.discount}
+                    onChange={handleChange}
+                    required
+                    className="mt-1"
+                  />
                 </div>
-                <div className="space-y-2">
+                <div>
                   <Label htmlFor="startDate">Start Date</Label>
-                  <Input id="startDate" name="startDate" type="date" value={form.startDate} onChange={handleChange} required />
+                  <Input
+                    id="startDate"
+                    name="startDate"
+                    type="date"
+                    value={form.startDate}
+                    onChange={handleChange}
+                    required
+                    className="mt-1"
+                  />
                 </div>
-                <div className="space-y-2">
+                <div>
                   <Label htmlFor="endDate">End Date</Label>
-                  <Input id="endDate" name="endDate" type="date" value={form.endDate} onChange={handleChange} required />
+                  <Input
+                    id="endDate"
+                    name="endDate"
+                    type="date"
+                    value={form.endDate}
+                    onChange={handleChange}
+                    required
+                    className="mt-1"
+                  />
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="maxUsage">Maximum Usage</Label>
-                  <Input id="maxUsage" name="maxUsage" type="number" min="0" value={form.maxUsage} onChange={handleChange} required />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="status">Status</Label>
-                  <select
-                    id="status"
-                    name="status"
-                    value={form.status}
-                    onChange={(e) => setForm({ ...form, status: e.target.value as "Active" | "Expired" | "Pending" })}
-                    className="w-full rounded-md border border-input bg-background px-3 py-2"
-                  >
-                    <option value="Active">Active</option>
-                    <option value="Expired">Expired</option>
-                    <option value="Pending">Pending</option>
-                  </select>
+                <div>
+                  <Label htmlFor="maxUsage">Max Usage</Label>
+                  <Input
+                    id="maxUsage"
+                    name="maxUsage"
+                    type="number"
+                    value={form.maxUsage}
+                    onChange={handleChange}
+                    required
+                    className="mt-1"
+                  />
                 </div>
               </div>
-              {formError && <div className="text-red-600 text-center font-medium mt-2">{formError}</div>}
+              {formError && <p className="text-red-500 text-sm mt-2">{formError}</p>}
               <Button
                 type="submit"
-                className="w-full bg-blue-600 text-white border-blue-600 hover:bg-blue-700 hover:text-white mt-2"
+                className="w-full bg-primary text-primary-foreground hover:bg-primary/90"
               >
                 Add Offer
               </Button>
-              {success && <div className="text-green-600 text-center font-medium mt-2">Offer added successfully!</div>}
+              {success && <p className="text-green-500 text-sm text-center mt-2">Offer added successfully!</p>}
             </form>
           </div>
         </div>
       )}
-
-      {/* View Offer Modal */}
-      {showViewModal && selectedOffer && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30">
-          <div className="bg-white rounded-lg p-6 w-full max-w-2xl">
-            <div className="flex justify-between items-center mb-4">
-              <h3 className="text-lg font-semibold">Offer Details</h3>
-              <Button variant="ghost" onClick={() => setShowViewModal(false)}>
-                <X className="h-4 w-4" />
-              </Button>
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <p className="text-sm text-muted-foreground">Title</p>
-                <p className="font-medium">{selectedOffer.title}</p>
-              </div>
-              <div>
-                <p className="text-sm text-muted-foreground">Company</p>
-                <p className="font-medium">{selectedOffer.company}</p>
-              </div>
-              <div>
-                <p className="text-sm text-muted-foreground">Category</p>
-                <p className="font-medium">{selectedOffer.category}</p>
-              </div>
-              <div>
-                <p className="text-sm text-muted-foreground">Discount</p>
-                <p className="font-medium">{selectedOffer.discount}%</p>
-              </div>
-              <div>
-                <p className="text-sm text-muted-foreground">Status</p>
-                <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${
-                  selectedOffer.status === "Active" ? "bg-green-100 text-green-800" : 
-                  selectedOffer.status === "Expired" ? "bg-red-100 text-red-800" : 
-                  "bg-yellow-100 text-yellow-800"
-                }`}>
-                  {selectedOffer.status}
-                </span>
-              </div>
-              <div>
-                <p className="text-sm text-muted-foreground">Usage</p>
-                <p className="font-medium">{selectedOffer.usage}/{selectedOffer.maxUsage}</p>
-              </div>
-              <div>
-                <p className="text-sm text-muted-foreground">Start Date</p>
-                <p className="font-medium">{formatDate(selectedOffer.startDate)}</p>
-              </div>
-              <div>
-                <p className="text-sm text-muted-foreground">End Date</p>
-                <p className="font-medium">{formatDate(selectedOffer.endDate)}</p>
-              </div>
-            </div>
-            <div className="flex justify-end space-x-2 mt-6">
-              <Button variant="outline" onClick={() => setShowViewModal(false)}>
-                Close
-              </Button>
-              <Button onClick={() => handleEdit(selectedOffer)}>
-                Edit Offer
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
-  );
+  )
 }

@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Building, Users, Tag, Ticket, BarChart, Settings, Plus, Edit2, Trash2, X } from "lucide-react";
@@ -8,22 +8,34 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import Link from "next/link";
 import { formatNumber } from "@/lib/utils"
+import { supabase } from "@/lib/supabase";
 
-// Mock data for companies
-const initialCompanies = [
-  { id: 1, name: "TechGadgets Inc.", email: "contact@techgadgets.com", offers: 5, status: "Active" },
-  { id: 2, name: "CloudSoft Solutions", email: "info@cloudsoft.com", offers: 3, status: "Pending" },
-  { id: 3, name: "Green Energy Co.", email: "hello@greenenergy.com", offers: 2, status: "Active" },
-];
-// Mock data for offers
-const offers = [
-  { id: 1, title: "20% off at TechGadgets", company: "TechGadgets Inc.", discount: "20%", validity: "30 days", status: "Active" },
-  { id: 2, title: "50% off Premium Coffee", company: "BeanBrew Coffee", discount: "50%", validity: "60 days", status: "Active" },
-];
+// Define interfaces for type safety
+interface Company {
+  id: string | number;
+  name: string;
+  email: string;
+  offers: number;
+  status: string;
+}
+
+interface Offer {
+  id: string | number;
+  title: string;
+  company: string;
+  discount: string;
+  validity: string;
+  status: string;
+}
+
+// Initial companies state with proper typing
+const initialCompanies: Company[] = [];
 
 export default function AdminDashboardPage() {
-  const [companies, setCompanies] = useState(initialCompanies);
+  const [companies, setCompanies] = useState<Company[]>(initialCompanies);
+  const [offers, setOffers] = useState<Offer[]>([]);
   const [showAddModal, setShowAddModal] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [form, setForm] = useState({
     name: "",
     industry: "",
@@ -46,20 +58,91 @@ export default function AdminDashboardPage() {
   });
   const [success, setSuccess] = useState(false);
   const [formError, setFormError] = useState('');
+  const [stats, setStats] = useState({
+    totalCompanies: 0,
+    activeCompanies: 0,
+    pendingCompanies: 0,
+    totalEmployees: 0,
+    activeEmployees: 0,
+    totalOffers: 0,
+    activeOffers: 0,
+    totalCoupons: 0,
+    redeemedCoupons: 0,
+    totalRevenue: 0,
+    monthlyRevenue: 0,
+  });
 
-  // Mock data for statistics
-  const stats = {
-    totalCompanies: companies.length,
-    activeCompanies: companies.filter(c => c.status === "Active").length,
-    pendingCompanies: companies.filter(c => c.status === "Pending").length,
-    totalEmployees: 1284,
-    activeEmployees: 1023,
-    totalOffers: 24,
-    activeOffers: 20,
-    totalCoupons: 3891,
-    redeemedCoupons: 2456,
-    totalRevenue: 125000,
-    monthlyRevenue: 25000,
+  useEffect(() => {
+    fetchData();
+  }, []);
+
+  const fetchData = async () => {
+    try {
+      setLoading(true);
+      
+      // Fetch all data in parallel for better performance
+      const [
+        { data: companiesData, error: companiesError },
+        { data: employeesData, error: employeesError },
+        { data: offersData, error: offersError },
+        { data: couponsData, error: couponsError }
+      ] = await Promise.all([
+        supabase.from('companies').select('*'),
+        supabase.from('employees').select('*'),
+        supabase.from('offers').select('*'),
+        supabase.from('coupons').select('*')
+      ]);
+
+      if (companiesError) throw companiesError;
+      if (employeesError) throw employeesError;
+      if (offersError) throw offersError;
+      
+      // Set companies data
+      if (companiesData) {
+        setCompanies(companiesData.map(company => ({
+          id: company.id,
+          name: company.name || company.company_name,
+          email: company.email || company.contact_email,
+          offers: 0, // Will be updated below
+          status: company.status || 'Active'
+        })));
+      }
+
+      // Set offers data with companies
+      if (offersData) {
+        setOffers(offersData.slice(0, 5).map(offer => ({
+          id: offer.id,
+          title: offer.title,
+          company: offer.company_name || "Unknown",
+          discount: offer.discount_type === "Percentage" ? `${offer.discount_value}%` : `$${offer.discount_value}`,
+          validity: `${new Date(offer.end_date).toLocaleDateString()}`,
+          status: offer.status || "Active"
+        })));
+      }
+
+      // Calculate statistics
+      const activeCompanies = companiesData?.filter(c => c.status === "Active").length || 0;
+      const pendingCompanies = companiesData?.filter(c => c.status === "Pending").length || 0;
+      
+      setStats({
+        totalCompanies: companiesData?.length || 0,
+        activeCompanies,
+        pendingCompanies,
+        totalEmployees: employeesData?.length || 0,
+        activeEmployees: employeesData?.filter(e => e.status === "active").length || 0,
+        totalOffers: offersData?.length || 0,
+        activeOffers: offersData?.filter(o => o.status === "Active").length || 0,
+        totalCoupons: couponsData?.length || 0,
+        redeemedCoupons: couponsData?.filter(c => c.redeemed).length || 0,
+        totalRevenue: 0, // Set to 0 as required
+        monthlyRevenue: 0 // Set to 0 as required
+      });
+      
+    } catch (error) {
+      console.error("Error fetching data:", error);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -174,10 +257,10 @@ export default function AdminDashboardPage() {
             <BarChart className="h-4 w-4 text-purple-700" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-purple-900">${formatNumber(stats.totalRevenue)}</div>
+            <div className="text-2xl font-bold text-purple-900">$0</div>
             <div className="flex items-center space-x-2 mt-2">
-              <span className="text-xs text-purple-800">Monthly: ${formatNumber(stats.monthlyRevenue)}</span>
-              <span className="text-xs text-green-800">+12% from last month</span>
+              <span className="text-xs text-purple-800">Monthly: $0</span>
+              <span className="text-xs text-green-800">+0% from last month</span>
             </div>
           </CardContent>
         </Card>
@@ -210,27 +293,41 @@ export default function AdminDashboardPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {companies.slice(0, 5).map((company) => (
-                    <TableRow key={company.id}>
-                      <TableCell className="font-medium">{company.name}</TableCell>
-                      <TableCell>
-                        <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${
-                          company.status === "Active" ? "bg-green-100 text-green-800" : "bg-yellow-100 text-yellow-800"
-                        }`}>
-                          {company.status}
-                        </span>
-                      </TableCell>
-                      <TableCell>{company.offers}</TableCell>
-                      <TableCell className="text-right">
-                        <Button variant="ghost" size="sm">
-                          <Edit2 className="h-4 w-4" />
-                        </Button>
-                        <Button variant="ghost" size="sm">
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
+                  {loading ? (
+                    <TableRow>
+                      <TableCell colSpan={4} className="text-center py-4">
+                        Loading...
                       </TableCell>
                     </TableRow>
-                  ))}
+                  ) : companies.length > 0 ? (
+                    companies.slice(0, 5).map((company) => (
+                      <TableRow key={company.id}>
+                        <TableCell className="font-medium">{company.name}</TableCell>
+                        <TableCell>
+                          <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${
+                            company.status === "Active" ? "bg-green-100 text-green-800" : "bg-yellow-100 text-yellow-800"
+                          }`}>
+                            {company.status}
+                          </span>
+                        </TableCell>
+                        <TableCell>{company.offers}</TableCell>
+                        <TableCell className="text-right">
+                          <Button variant="ghost" size="sm">
+                            <Edit2 className="h-4 w-4" />
+                          </Button>
+                          <Button variant="ghost" size="sm">
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  ) : (
+                    <TableRow>
+                      <TableCell colSpan={4} className="text-center py-4">
+                        No companies found
+                      </TableCell>
+                    </TableRow>
+                  )}
                 </TableBody>
               </Table>
             </div>
@@ -257,30 +354,46 @@ export default function AdminDashboardPage() {
                   <TableRow>
                     <TableHead>Title</TableHead>
                     <TableHead>Company</TableHead>
+                    <TableHead>Discount</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {offers.map((offer) => (
-                    <TableRow key={offer.id}>
-                      <TableCell className="font-medium">{offer.title}</TableCell>
-                      <TableCell>{offer.company}</TableCell>
-                      <TableCell>
-                        <span className="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium bg-green-100 text-green-800">
-                          {offer.status}
-                        </span>
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <Button variant="ghost" size="sm">
-                          <Edit2 className="h-4 w-4" />
-                        </Button>
-                        <Button variant="ghost" size="sm">
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
+                  {loading ? (
+                    <TableRow>
+                      <TableCell colSpan={5} className="text-center py-4">
+                        Loading...
                       </TableCell>
                     </TableRow>
-                  ))}
+                  ) : offers.length > 0 ? (
+                    offers.map((offer) => (
+                      <TableRow key={offer.id}>
+                        <TableCell className="font-medium">{offer.title}</TableCell>
+                        <TableCell>{offer.company}</TableCell>
+                        <TableCell>{offer.discount}</TableCell>
+                        <TableCell>
+                          <span className="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium bg-green-100 text-green-800">
+                            {offer.status}
+                          </span>
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <Button variant="ghost" size="sm">
+                            <Edit2 className="h-4 w-4" />
+                          </Button>
+                          <Button variant="ghost" size="sm">
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  ) : (
+                    <TableRow>
+                      <TableCell colSpan={5} className="text-center py-4">
+                        No offers found
+                      </TableCell>
+                    </TableRow>
+                  )}
                 </TableBody>
               </Table>
             </div>
