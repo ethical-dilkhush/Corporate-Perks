@@ -8,7 +8,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
 import { Mail, Phone, MapPin, Clock, Send, ArrowRight } from "lucide-react"
 import Image from "next/image"
-import { Footer } from "@/components/footer"
+
 
 export default function ContactPage() {
   const [formData, setFormData] = useState({
@@ -200,7 +200,6 @@ export default function ContactPage() {
         </div>
       </div>
 
-      <Footer />
     </div>
   )
 } 

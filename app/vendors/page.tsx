@@ -4,7 +4,6 @@ import { Building2, Store, Users, Gift, ArrowRight, CheckCircle2, Mail, Phone } 
 import Image from "next/image"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
-import { Footer } from "@/components/footer"
 
 const vendorCategories = [
   {
@@ -241,7 +240,6 @@ export default function VendorsPage() {
         </div>
       </section>
 
-      <Footer />
     </div>
   )
 } 

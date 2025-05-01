@@ -366,109 +366,14 @@ export default function EmployeesPage() {
               onChange={(e) => setSearchQuery(e.target.value)}
             />
           </div>
-          <Dialog open={isAddEmployeeOpen} onOpenChange={setIsAddEmployeeOpen}>
-            <DialogTrigger asChild>
-              <Button>
-                <Plus className="mr-2 h-4 w-4" />
-                Add Employee
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="sm:max-w-[600px] max-h-[80vh] overflow-y-auto">
-              <DialogHeader>
-                <DialogTitle>Add New Employee{employeeForms.length > 1 ? `s (${employeeForms.length})` : ''}</DialogTitle>
-                <DialogDescription>
-                  Enter the details of the new employee{employeeForms.length > 1 ? 's' : ''}.
-                </DialogDescription>
-              </DialogHeader>
-              <div className="grid gap-4 py-4">
-                {employeeForms.map((form, index) => (
-                  <div key={form.id} className="space-y-4">
-                    {index > 0 && (
-                      <div className="flex items-center justify-between">
-                        <div className="text-sm font-medium">Employee {index + 1}</div>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => removeEmployeeForm(form.id)}
-                          className="text-destructive hover:text-destructive"
-                        >
-                          Remove
-                        </Button>
-                      </div>
-                    )}
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div className="grid gap-2">
-                        <Label htmlFor={`name-${form.id}`}>Full Name</Label>
-                        <Input id={`name-${form.id}`} placeholder="Enter full name" />
-                      </div>
-                      <div className="grid gap-2">
-                        <Label htmlFor={`email-${form.id}`}>Email</Label>
-                        <Input id={`email-${form.id}`} type="email" placeholder="Enter email" />
-                      </div>
-                      <div className="grid gap-2">
-                        <Label htmlFor={`mobile-${form.id}`}>Mobile Number</Label>
-                        <Input id={`mobile-${form.id}`} placeholder="Enter mobile number" />
-                      </div>
-                      <div className="grid gap-2">
-                        <Label htmlFor={`role-${form.id}`}>Role</Label>
-                        <Input id={`role-${form.id}`} placeholder="Enter role" />
-                      </div>
-                    </div>
-                    <div className="grid gap-2">
-                      <Label htmlFor={`address-${form.id}`}>Address</Label>
-                      <Textarea
-                        id={`address-${form.id}`}
-                        placeholder="Enter complete address"
-                        className="min-h-[80px]"
-                      />
-                    </div>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="grid gap-2">
-                        <Label htmlFor={`city-${form.id}`}>City</Label>
-                        <Input id={`city-${form.id}`} placeholder="Enter city" />
-                </div>
-                <div className="grid gap-2">
-                        <Label htmlFor={`state-${form.id}`}>State/Province</Label>
-                        <Input id={`state-${form.id}`} placeholder="Enter state/province" />
-                </div>
-                <div className="grid gap-2">
-                        <Label htmlFor={`country-${form.id}`}>Country</Label>
-                        <Input id={`country-${form.id}`} placeholder="Enter country" />
-                </div>
-                <div className="grid gap-2">
-                        <Label htmlFor={`postalCode-${form.id}`}>Postal Code</Label>
-                        <Input id={`postalCode-${form.id}`} placeholder="Enter postal code" />
-                      </div>
-                    </div>
-                    {index === employeeForms.length - 1 && (
-                      <div className="flex justify-between items-center">
-                        <Button
-                          type="button"
-                          variant="outline"
-                          onClick={addNewEmployeeForm}
-                          className="flex items-center gap-2"
-                        >
-                          <Plus className="h-4 w-4" />
-                          Add More
-                        </Button>
-                        <div className="flex gap-2">
-                          <Button variant="outline" onClick={() => setIsAddEmployeeOpen(false)}>
-                            Cancel
-                          </Button>
-                          <Button type="submit" onClick={() => {
+{/*   
+              <Button onClick={() => {
                             setIsAddEmployeeOpen(false)
                             router.push("/company/employees/new")
-                          }}>
-                            Register Employee{employeeForms.length > 1 ? 's' : ''}
-                          </Button>
-                        </div>
-                      </div>
-                    )}
-                </div>
-                ))}
-              </div>
-            </DialogContent>
-          </Dialog>
+                          }} >
+                <Plus className="mr-2 h-4 w-4" />
+                Add Employee
+              </Button> */}
         </div>
       </div>
 
