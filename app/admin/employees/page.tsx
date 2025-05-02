@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -16,53 +16,49 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { supabase } from "@/lib/supabase";
 
-// Mock data for employees
-const initialEmployees = [
-  {
-    id: 1,
-    name: "John Doe",
-    email: "john.doe@company.com",
-    company: "TechGadgets Inc.",
-    department: "Engineering",
-    status: "Active",
-    joinDate: "2023-01-15",
-  },
-  {
-    id: 2,
-    name: "Jane Smith",
-    email: "jane.smith@company.com",
-    company: "CloudSoft Solutions",
-    department: "Marketing",
-    status: "Active",
-    joinDate: "2023-02-20",
-  },
-  {
-    id: 3,
-    name: "Mike Johnson",
-    email: "mike.johnson@company.com",
-    company: "Green Energy Co.",
-    department: "Sales",
-    status: "Inactive",
-    joinDate: "2023-03-10",
-  },
-];
+// Define interface for employee data
+interface Employee {
+  id: string | number;
+  name: string;
+  email: string;
+  company: string;
+  department: string;
+  status: string;
+  joinDate: string;
+}
 
-// Mock analytics data
-const employeeAnalytics = {
-  totalEmployees: 150,
-  activeEmployees: 135,
-  companies: 8,
-  departments: 12,
-  recentJoins: 15,
-  recentLeaves: 3,
+// Empty initial employees array with proper typing
+const initialEmployees: Employee[] = [];
+
+// Analytics interface
+interface EmployeeAnalytics {
+  totalEmployees: number;
+  activeEmployees: number;
+  companies: number;
+  departments: number;
+  recentJoins: number;
+  recentLeaves: number;
+}
+
+// Initial analytics state
+const initialAnalytics: EmployeeAnalytics = {
+  totalEmployees: 0,
+  activeEmployees: 0,
+  companies: 0,
+  departments: 0,
+  recentJoins: 0,
+  recentLeaves: 0,
 };
 
 export default function EmployeesPage() {
-  const [employees, setEmployees] = useState(initialEmployees);
+  const [employees, setEmployees] = useState<Employee[]>(initialEmployees);
   const [showAddModal, setShowAddModal] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
+  const [loading, setLoading] = useState(true);
+  const [employeeAnalytics, setEmployeeAnalytics] = useState<EmployeeAnalytics>(initialAnalytics);
   const [form, setForm] = useState({
     name: "",
     email: "",
@@ -71,39 +67,131 @@ export default function EmployeesPage() {
     status: "Active",
   });
 
+  // Fetch data on component mount
+  useEffect(() => {
+    fetchEmployees();
+  }, []);
+
+  // Function to fetch employees data from Supabase
+  const fetchEmployees = async () => {
+    try {
+      setLoading(true);
+      
+      // Fetch employees data
+      const { data: employeesData, error: employeesError } = await supabase
+        .from('employees')
+        .select('*');
+      
+      if (employeesError) {
+        console.error('Error fetching employees:', employeesError);
+        return;
+      }
+
+      // Fetch company data for counting
+      const { data: companiesData, error: companiesError } = await supabase
+        .from('companies')
+        .select('id');
+      
+      if (companiesError) {
+        console.error('Error fetching companies:', companiesError);
+      }
+
+      // Format employee data
+      if (employeesData) {
+        // Transform the data to match our interface
+        const formattedEmployees: Employee[] = employeesData.map(emp => ({
+          id: emp.id,
+          name: emp.name || emp.full_name || 'Unknown',
+          email: emp.email || 'No email',
+          company: emp.company_name || emp.company_id || 'Unknown',
+          department: emp.department || emp.role || 'General',
+          status: emp.status || 'Active',
+          joinDate: emp.created_at || emp.join_date || new Date().toISOString().split('T')[0],
+        }));
+
+        setEmployees(formattedEmployees);
+
+        // Calculate analytics
+        const activeEmps = employeesData.filter(emp => emp.status === 'active' || emp.status === 'Active').length;
+        const uniqueDepartments = new Set(employeesData.map(emp => emp.department || emp.role)).size;
+        
+        // Get recent joins (last 30 days)
+        const thirtyDaysAgo = new Date();
+        thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+        const recentJoins = employeesData.filter(emp => {
+          const joinDate = new Date(emp.created_at || emp.join_date);
+          return joinDate >= thirtyDaysAgo;
+        }).length;
+
+        // Recent leaves estimation
+        const recentLeaves = Math.floor(employeesData.filter(emp => 
+          emp.status === 'inactive' || emp.status === 'Inactive'
+        ).length * 0.3); // Assuming 30% of inactive are recent
+
+        setEmployeeAnalytics({
+          totalEmployees: employeesData.length,
+          activeEmployees: activeEmps,
+          companies: companiesData?.length || 0,
+          departments: uniqueDepartments,
+          recentJoins,
+          recentLeaves,
+        });
+      }
+    } catch (error) {
+      console.error('Error in fetchEmployees:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setForm({ ...form, [e.target.name]: e.target.value });
   };
 
-  const handleAddEmployee = (e: React.FormEvent) => {
+  const handleAddEmployee = async (e: React.FormEvent) => {
     e.preventDefault();
-    setEmployees([
-      ...employees,
-      {
-        id: employees.length + 1,
-        name: form.name,
-        email: form.email,
-        company: form.company,
-        department: form.department,
-        status: form.status,
-        joinDate: new Date().toISOString().split("T")[0],
-      },
-    ]);
-    setForm({
-      name: "",
-      email: "",
-      company: "",
-      department: "",
-      status: "Active",
-    });
-    setShowAddModal(false);
+    
+    try {
+      // Add the employee to Supabase
+      const { data, error } = await supabase
+        .from('employees')
+        .insert([{
+          name: form.name,
+          email: form.email,
+          company_id: form.company, // Assuming company is the ID
+          department: form.department,
+          status: form.status,
+          created_at: new Date().toISOString(),
+        }])
+        .select();
+
+      if (error) {
+        console.error('Error adding employee:', error);
+        return;
+      }
+
+      // Refresh the employee list
+      fetchEmployees();
+      
+      // Reset form and close modal
+      setForm({
+        name: "",
+        email: "",
+        company: "",
+        department: "",
+        status: "Active",
+      });
+      setShowAddModal(false);
+    } catch (error) {
+      console.error('Error in handleAddEmployee:', error);
+    }
   };
 
   const filteredEmployees = employees.filter((employee) => {
     const matchesSearch =
       employee.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       employee.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      employee.company.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      employee.company.toString().toLowerCase().includes(searchQuery.toLowerCase()) ||
       employee.department.toLowerCase().includes(searchQuery.toLowerCase());
     
     const matchesStatus = statusFilter === "all" || employee.status === statusFilter;
@@ -143,7 +231,7 @@ export default function EmployeesPage() {
             <div className="text-2xl font-bold text-blue-900">{employeeAnalytics.totalEmployees}</div>
             <div className="flex items-center space-x-2 mt-2">
               <span className="text-xs text-blue-800">Active: {employeeAnalytics.activeEmployees}</span>
-              <span className="text-xs text-gray-800">+16% from last month</span>
+              <span className="text-xs text-gray-800">From database</span>
             </div>
           </CardContent>
         </Card>
@@ -157,7 +245,7 @@ export default function EmployeesPage() {
             <div className="text-2xl font-bold text-green-900">{employeeAnalytics.companies}</div>
             <div className="flex items-center space-x-2 mt-2">
               <span className="text-xs text-green-800">Departments: {employeeAnalytics.departments}</span>
-              <span className="text-xs text-gray-800">+2 new this month</span>
+              <span className="text-xs text-gray-800">Real data</span>
             </div>
           </CardContent>
         </Card>
@@ -182,10 +270,13 @@ export default function EmployeesPage() {
             <ArrowUpRight className="h-4 w-4 text-orange-700" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-orange-900">89%</div>
+            <div className="text-2xl font-bold text-orange-900">
+              {employeeAnalytics.totalEmployees ? 
+                Math.round((employeeAnalytics.activeEmployees / employeeAnalytics.totalEmployees) * 100) : 0}%
+            </div>
             <div className="flex items-center space-x-2 mt-2">
-              <span className="text-xs text-orange-800">Active Users</span>
-              <span className="text-xs text-gray-800">+5% from last month</span>
+              <span className="text-xs text-orange-800">Active Rate</span>
+              <span className="text-xs text-gray-800">Based on status</span>
             </div>
           </CardContent>
         </Card>
@@ -237,37 +328,53 @@ export default function EmployeesPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredEmployees.map((employee) => (
-                  <TableRow key={employee.id} className="hover:bg-accent/50">
-                    <TableCell className="font-medium text-foreground">{employee.name}</TableCell>
-                    <TableCell className="text-foreground">{employee.email}</TableCell>
-                    <TableCell className="text-foreground">{employee.company}</TableCell>
-                    <TableCell className="text-foreground">{employee.department}</TableCell>
-                    <TableCell>
-                      <span
-                        className={cn(
-                          "inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium",
-                          employee.status === "Active"
-                            ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200"
-                            : "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200"
-                        )}
-                      >
-                        {employee.status}
-                      </span>
-                    </TableCell>
-                    <TableCell className="text-foreground">{employee.joinDate}</TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex items-center justify-end gap-2">
-                        <Button variant="ghost" size="sm" className="hover:bg-accent">
-                          <Edit2 className="h-4 w-4" />
-                        </Button>
-                        <Button variant="ghost" size="sm" className="hover:bg-accent">
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
+                {loading ? (
+                  <TableRow>
+                    <TableCell colSpan={7} className="text-center py-10">
+                      <div className="flex justify-center">
+                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
                       </div>
                     </TableCell>
                   </TableRow>
-                ))}
+                ) : filteredEmployees.length > 0 ? (
+                  filteredEmployees.map((employee) => (
+                    <TableRow key={String(employee.id)} className="hover:bg-accent/50">
+                      <TableCell className="font-medium text-foreground">{employee.name}</TableCell>
+                      <TableCell className="text-foreground">{employee.email}</TableCell>
+                      <TableCell className="text-foreground">{employee.company}</TableCell>
+                      <TableCell className="text-foreground">{employee.department}</TableCell>
+                      <TableCell>
+                        <span
+                          className={cn(
+                            "inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium",
+                            employee.status === "Active"
+                              ? "bg-green-100 text-green-800"
+                              : "bg-yellow-100 text-yellow-800"
+                          )}
+                        >
+                          {employee.status}
+                        </span>
+                      </TableCell>
+                      <TableCell className="text-foreground">
+                        {new Date(employee.joinDate).toLocaleDateString()}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <Button variant="ghost" size="sm" className="text-primary hover:text-primary/80">
+                          <Edit2 className="h-4 w-4" />
+                        </Button>
+                        <Button variant="ghost" size="sm" className="text-red-500 hover:text-red-600">
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                ) : (
+                  <TableRow>
+                    <TableCell colSpan={7} className="text-center py-10 text-muted-foreground">
+                      No employees found. Try adjusting your search or filters.
+                    </TableCell>
+                  </TableRow>
+                )}
               </TableBody>
             </Table>
           </div>
@@ -276,66 +383,83 @@ export default function EmployeesPage() {
 
       {/* Add Employee Modal */}
       {showAddModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm">
-          <div className="bg-background rounded-lg shadow-lg p-6 w-full max-w-md border border-border">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-semibold text-foreground">Add New Employee</h3>
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => setShowAddModal(false)}
-                className="hover:bg-accent"
-              >
-                <X className="h-4 w-4" />
-              </Button>
-            </div>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 overflow-y-auto">
+          <div className="bg-white rounded-xl shadow-2xl p-8 w-full max-w-2xl relative border border-border max-h-[90vh] overflow-y-auto">
+            <button
+              className="absolute top-3 right-3 text-muted-foreground hover:text-foreground"
+              onClick={() => setShowAddModal(false)}
+              aria-label="Close"
+            >
+              <X className="h-6 w-6" />
+            </button>
+            <h3 className="text-xl font-bold mb-2 text-foreground">Add New Employee</h3>
             <form onSubmit={handleAddEmployee} className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="name" className="text-foreground">Full Name</Label>
-                <Input
-                  id="name"
-                  name="name"
-                  value={form.name}
-                  onChange={handleChange}
-                  required
-                  className="bg-background"
-                />
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="name" className="text-foreground">Full Name</Label>
+                  <Input
+                    id="name"
+                    name="name"
+                    value={form.name}
+                    onChange={handleChange}
+                    required
+                    className="mt-1"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="email" className="text-foreground">Email Address</Label>
+                  <Input
+                    id="email"
+                    name="email"
+                    type="email"
+                    value={form.email}
+                    onChange={handleChange}
+                    required
+                    className="mt-1"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="company" className="text-foreground">Company</Label>
+                  <Input
+                    id="company"
+                    name="company"
+                    value={form.company}
+                    onChange={handleChange}
+                    required
+                    className="mt-1"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="department" className="text-foreground">Department</Label>
+                  <Input
+                    id="department"
+                    name="department"
+                    value={form.department}
+                    onChange={handleChange}
+                    required
+                    className="mt-1"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="status" className="text-foreground">Status</Label>
+                  <Select
+                    value={form.status}
+                    onValueChange={(value) => setForm({ ...form, status: value })}
+                  >
+                    <SelectTrigger className="mt-1 w-full">
+                      <SelectValue placeholder="Select status" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Active">Active</SelectItem>
+                      <SelectItem value="Inactive">Inactive</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="email" className="text-foreground">Email</Label>
-                <Input
-                  id="email"
-                  name="email"
-                  type="email"
-                  value={form.email}
-                  onChange={handleChange}
-                  required
-                  className="bg-background"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="company" className="text-foreground">Company</Label>
-                <Input
-                  id="company"
-                  name="company"
-                  value={form.company}
-                  onChange={handleChange}
-                  required
-                  className="bg-background"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="department" className="text-foreground">Department</Label>
-                <Input
-                  id="department"
-                  name="department"
-                  value={form.department}
-                  onChange={handleChange}
-                  required
-                  className="bg-background"
-                />
-              </div>
-              <Button type="submit" className="w-full bg-primary text-primary-foreground hover:bg-primary/90">
+              <Button
+                type="submit"
+                className="w-full bg-primary text-primary-foreground hover:bg-primary/90"
+              >
                 Add Employee
               </Button>
             </form>
