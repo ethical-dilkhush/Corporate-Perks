@@ -46,10 +46,10 @@ export default function CouponsPage() {
       navigator.share({
         title: "Employee Perks Coupon",
         text: `Use this coupon code: ${code}`,
-      })
+      });
     } else {
-      navigator.clipboard.writeText(code)
-      toast.success("Coupon code copied to clipboard!")
+      navigator.clipboard.writeText(code);
+      toast.success("Coupon code copied to clipboard!");
     }
   }
 
@@ -116,11 +116,7 @@ export default function CouponsPage() {
                   </div>
                   <div className="flex items-center justify-between text-sm text-muted-foreground">
                     <p>Valid until {new Date(coupon.validUntil).toLocaleDateString()}</p>
-                    {coupon.redeemed && (
-                      <Badge variant="outline" className="bg-green-50 text-green-700">
-                        Redeemed
-                      </Badge>
-                    )}
+                   
                   </div>
                 </div>
               </CardContent>

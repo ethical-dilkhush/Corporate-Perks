@@ -3,6 +3,7 @@ import Link from "next/link"
 import { Gift } from "lucide-react"
 import { UserNav } from "@/components/dashboard/user-nav"
 
+// TODO: Consider moving this to a configuration file or API
 const navItems = [
   { name: "Dashboard", href: "/company/dashboard" },
   { name: "Offers", href: "/company/offers" },

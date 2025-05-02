@@ -19,7 +19,7 @@ import {
 } from "lucide-react"
 import { useRouter } from "next/navigation"
 
-// Mock data - in real app, this would come from an API
+// TODO: Replace with API data
 const recentActivities = [
   {
     id: 1,
@@ -47,6 +47,7 @@ const recentActivities = [
   },
 ]
 
+// TODO: Replace with API data
 const topPartners = [
   {
     name: "TechStore Electronics",
@@ -182,9 +183,6 @@ export default function CompanyPage() {
                   <CardTitle className="text-xl">Recent Activity</CardTitle>
                   <CardDescription>Latest updates from your perks program</CardDescription>
                 </div>
-                <Button variant="ghost" size="icon">
-                  <ArrowRight className="h-4 w-4" />
-                </Button>
               </div>
             </CardHeader>
             <CardContent>

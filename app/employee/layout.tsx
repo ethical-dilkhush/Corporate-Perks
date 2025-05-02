@@ -9,13 +9,6 @@ import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar"
 import { useRouter } from "next/navigation"
 import { ThemeProvider } from "@/components/theme-provider"
 
-const navItems = [
-  { name: "Home", href: "/employee" },
-  { name: "About", href: "/about" },
-  { name: "Dashboard", href: "/dashboard" },
-  { name: "Contact", href: "/contact" },
-]
-
 export default function EmployeeLayout({
   children,
 }: {

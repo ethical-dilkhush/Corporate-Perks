@@ -44,11 +44,13 @@ export default function EmployeeHomePage() {
     fetchOffers();
   }, []);
 
+
   const fetchOffers = async () => {
     try {
       const response = await fetch('/api/offers');
       if (!response.ok) {
         throw new Error('Failed to fetch offers');
+      
       }
       const data = await response.json();
       setOffers(data);
@@ -59,6 +61,7 @@ export default function EmployeeHomePage() {
       setOffersLoading(false);
     }
   };
+
 
   return (
     <div className="flex flex-col min-h-screen bg-background">
@@ -126,50 +129,54 @@ export default function EmployeeHomePage() {
             <div className="text-center py-8">No offers available at the moment.</div>
           ) : (
             <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-              {offers.map((offer) => (
-                <Link 
-                  key={offer.id} 
-                  href={`/employee/dashboard/offers#${offer.id}`}
-                  className="block"
-                >
-                  <div
-                    className="bg-card rounded-xl border border-border p-6 flex flex-col justify-between min-h-[220px] hover:shadow transition cursor-pointer"
+              {offers
+                .slice()
+                .sort((a, b) => new Date(b.valid_until).getTime() - new Date(a.valid_until).getTime())
+                .slice(0, 3)
+                .map((offer) => (
+                  <Link 
+                    key={offer.id} 
+                    href={`/employee/dashboard/offers#${offer.id}`}
+                    className="block"
                   >
-                    {/* Offer Header */}
-                    <div className="flex items-center gap-4 mb-2">
-                      <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center overflow-hidden">
-                        <img 
-                          src={offer.image_url || '/placeholder.svg'} 
-                          alt={offer.company_name} 
-                          className="w-12 h-12 object-cover" 
-                        />
+                    <div
+                      className="bg-card rounded-xl border border-border p-6 flex flex-col justify-between min-h-[220px] hover:shadow transition cursor-pointer"
+                    >
+                      {/* Offer Header */}
+                      <div className="flex items-center gap-4 mb-2">
+                        <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center overflow-hidden">
+                          <img 
+                            src={offer.image_url || '/placeholder.svg'} 
+                            alt={offer.company_name} 
+                            className="w-12 h-12 object-cover" 
+                          />
+                        </div>
+                        <div className="flex-1">
+                          <div className="font-bold text-lg text-foreground">{offer.company_name}</div>
+                          <div className="text-sm text-muted-foreground">{offer.category}</div>
+                        </div>
+                        <Badge variant="secondary" className="text-lg font-semibold">
+                          {offer.discount_value}% OFF
+                        </Badge>
                       </div>
-                      <div className="flex-1">
-                        <div className="font-bold text-lg text-foreground">{offer.company_name}</div>
-                        <div className="text-sm text-muted-foreground">{offer.category}</div>
+
+                      {/* Offer Details */}
+                      <div className="flex items-center gap-2 mt-2 mb-2">
+                        <Gift className="w-5 h-5 text-primary" />
+                        <span className="font-medium text-foreground text-base">{offer.title}</span>
                       </div>
-                      <Badge variant="secondary" className="text-lg font-semibold">
-                        {offer.discount_value}% OFF
-                      </Badge>
-                    </div>
+                      <div className="text-sm text-muted-foreground mb-2">{offer.description}</div>
 
-                    {/* Offer Details */}
-                    <div className="flex items-center gap-2 mt-2 mb-2">
-                      <Gift className="w-5 h-5 text-primary" />
-                      <span className="font-medium text-foreground text-base">{offer.title}</span>
+                      {/* Offer Footer */}
+                      <div className="flex items-center justify-between mt-4">
+                        <span className="text-xs text-muted-foreground">
+                          Valid until {offer.validUntilFormatted}
+                        </span>
+                        <ArrowRight className="w-5 h-5 text-muted-foreground" />
+                      </div>
                     </div>
-                    <div className="text-sm text-muted-foreground mb-2">{offer.description}</div>
-
-                    {/* Offer Footer */}
-                    <div className="flex items-center justify-between mt-4">
-                      <span className="text-xs text-muted-foreground">
-                        Valid until {offer.validUntilFormatted}
-                      </span>
-                      <ArrowRight className="w-5 h-5 text-muted-foreground" />
-                    </div>
-                  </div>
-                </Link>
-              ))}
+                  </Link>
+                ))}
             </div>
           )}
         </section>
