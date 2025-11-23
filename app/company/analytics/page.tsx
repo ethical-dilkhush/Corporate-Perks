@@ -1,51 +1,171 @@
 "use client"
 
+import { useEffect, useMemo, useState } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Button } from "@/components/ui/button"
-import { Calendar, Download, Filter, TrendingUp, Eye, MousePointerClick } from "lucide-react"
+import {
+  Calendar,
+  Download,
+  Filter,
+  TrendingUp,
+  Eye,
+  MousePointerClick,
+  Activity as ActivityIcon,
+  Users,
+  Percent,
+  Sparkles,
+} from "lucide-react"
+import { cn } from "@/lib/utils"
 
-// Mock data for offer performance
-const offerPerformance = [
-  {
-    id: 1,
-    title: "Amazon Prime Membership",
-    partner: "Amazon",
-    impressions: 1250,
-    clicks: 450,
-    conversionRate: "36%",
-    trend: "up",
+interface OfferMetric {
+  id: string
+  title: string
+  category: string | null
+  status: string | null
+  start_date: string | null
+  end_date: string | null
+  redemptions: number | null
+  max_redemptions: number | null
+  created_at: string | null
+  impression_events?: number
+  click_events?: number
+}
+
+interface EmployeeMetric {
+  id: number
+  name: string
+  email: string
+  role: string
+  status: string
+  created_at: string | null
+  engagements?: number
+}
+
+interface ActivityItem {
+  id: string
+  type: "offer" | "coupon" | "employee"
+  title: string
+  description: string
+  timestamp: string
+}
+
+interface AnalyticsResponse {
+  metrics: {
+    impressions: number
+    clicks: number
+    conversionRate: number
+    activeOffers: number
+    employees: number
+    partners: number
+    coupons: number
+  }
+  offers: {
+    list: OfferMetric[]
+    top: OfferMetric[]
+  }
+  employees: {
+    recent: EmployeeMetric[]
+    engaged: EmployeeMetric[]
+  }
+  activity: ActivityItem[]
+}
+
+const initialAnalytics: AnalyticsResponse = {
+  metrics: {
+    impressions: 0,
+    clicks: 0,
+    conversionRate: 0,
+    activeOffers: 0,
+    employees: 0,
+    partners: 0,
+    coupons: 0,
   },
-  {
-    id: 2,
-    title: "Netflix Premium Plan",
-    partner: "Netflix",
-    impressions: 980,
-    clicks: 320,
-    conversionRate: "33%",
-    trend: "up",
+  offers: {
+    list: [],
+    top: [],
   },
-  {
-    id: 3,
-    title: "Spotify Family Plan",
-    partner: "Spotify",
-    impressions: 750,
-    clicks: 280,
-    conversionRate: "37%",
-    trend: "down",
+  employees: {
+    recent: [],
+    engaged: [],
   },
-  {
-    id: 4,
-    title: "Uber Eats Discount",
-    partner: "Uber",
-    impressions: 620,
-    clicks: 190,
-    conversionRate: "31%",
-    trend: "up",
-  },
-]
+  activity: [],
+}
 
 export default function AnalyticsPage() {
+  const [data, setData] = useState<AnalyticsResponse>(initialAnalytics)
+  const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    const fetchAnalytics = async () => {
+      setIsLoading(true)
+      setError(null)
+      try {
+        const response = await fetch("/api/company/analytics")
+        const payload = await response.json()
+        if (!response.ok) {
+          throw new Error(payload.error || "Failed to load analytics")
+        }
+        setData(payload)
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Failed to load analytics")
+      } finally {
+        setIsLoading(false)
+      }
+    }
+
+    fetchAnalytics()
+  }, [])
+
+  const overviewCards = useMemo(
+    () => [
+      {
+        title: "Total Impressions",
+        value: data.metrics.impressions.toLocaleString(),
+        icon: Eye,
+        helper: `${data.metrics.activeOffers} active offers`,
+      },
+      {
+        title: "Total Clicks",
+        value: data.metrics.clicks.toLocaleString(),
+        icon: MousePointerClick,
+        helper: `${data.metrics.coupons} coupons generated`,
+      },
+      {
+        title: "Average CTR",
+        value: `${data.metrics.conversionRate.toFixed(1)}%`,
+        icon: TrendingUp,
+        helper: "Conversion rate across all offers",
+      },
+      {
+        title: "Employees with Access",
+        value: data.metrics.employees.toLocaleString(),
+        icon: Users,
+        helper: `${data.metrics.partners} partner companies`,
+      },
+    ],
+    [data.metrics],
+  )
+
+  const renderBar = (value: number, total: number) => {
+    const percentage = total > 0 ? Math.min((value / total) * 100, 100) : 0
+    return (
+      <div className="space-y-2">
+        <div className="flex items-center justify-between text-sm text-muted-foreground">
+          <span>{value.toLocaleString()}</span>
+          <span>{percentage.toFixed(1)}%</span>
+        </div>
+        <div className="h-2 rounded-full bg-muted">
+          <div
+            className="h-2 rounded-full bg-primary transition-all"
+            style={{ width: `${percentage}%` }}
+          />
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="flex-1 space-y-4 p-8 pt-6">
       <div className="flex items-center justify-between space-y-2">
@@ -55,110 +175,112 @@ export default function AnalyticsPage() {
             <Calendar className="mr-2 h-4 w-4" />
             Last 30 Days
           </Button>
-          <Button variant="outline" size="sm">
+          <Button variant="outline" size="sm" disabled>
             <Filter className="mr-2 h-4 w-4" />
             Filter
           </Button>
-          <Button variant="outline" size="sm">
+          <Button variant="outline" size="sm" disabled>
             <Download className="mr-2 h-4 w-4" />
             Export
           </Button>
         </div>
       </div>
 
+      {error && (
+        <Card className="border-destructive/50 bg-destructive/5 text-destructive">
+          <CardContent className="py-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="font-semibold">Unable to load analytics</p>
+                <p className="text-sm text-destructive/80">{error}</p>
+              </div>
+              <Button variant="outline" size="sm" onClick={() => window.location.reload()}>
+                Retry
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       <Tabs defaultValue="overview" className="space-y-4">
         <TabsList>
           <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="offers">Offers</TabsTrigger>
           <TabsTrigger value="employees">Employees</TabsTrigger>
-          <TabsTrigger value="partners">Partners</TabsTrigger>
+          <TabsTrigger value="activity">Activity</TabsTrigger>
         </TabsList>
 
         <TabsContent value="overview" className="space-y-4">
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Total Impressions</CardTitle>
-                <Eye className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">3,600</div>
-                <p className="text-xs text-muted-foreground">+15% from last month</p>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Total Clicks</CardTitle>
-                <MousePointerClick className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">1,240</div>
-                <p className="text-xs text-muted-foreground">+12% from last month</p>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Average CTR</CardTitle>
-                <TrendingUp className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">34.4%</div>
-                <p className="text-xs text-muted-foreground">+2.1% from last month</p>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Active Offers</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">24</div>
-                <p className="text-xs text-muted-foreground">+5 from last month</p>
-              </CardContent>
-            </Card>
+            {overviewCards.map((card) => (
+              <Card key={card.title}>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">{card.title}</CardTitle>
+                  <card.icon className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">{card.value}</div>
+                  <p className="text-xs text-muted-foreground">{card.helper}</p>
+                </CardContent>
+              </Card>
+            ))}
           </div>
 
           <div className="grid gap-4 md:grid-cols-2">
             <Card>
               <CardHeader>
                 <CardTitle>Impressions vs Clicks</CardTitle>
-                <CardDescription>
-                  Performance over the last 30 days
-                </CardDescription>
+                <CardDescription>Platform interactions for your offers</CardDescription>
               </CardHeader>
-              <CardContent>
-                <div className="h-[350px] flex items-center justify-center bg-muted rounded-lg">
-                  <p className="text-muted-foreground">Performance Chart</p>
+              <CardContent className="space-y-6">
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground mb-2">Impressions</p>
+                  {renderBar(data.metrics.impressions, Math.max(data.metrics.impressions, data.metrics.clicks))}
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground mb-2">Clicks</p>
+                  {renderBar(data.metrics.clicks, Math.max(data.metrics.impressions, data.metrics.clicks))}
+                </div>
+                <div className="rounded-lg border bg-muted/30 p-4">
+                  <div className="flex items-center gap-3">
+                    <div className="rounded-full bg-primary/10 p-2">
+                      <Percent className="h-4 w-4 text-primary" />
+                    </div>
+                    <div>
+                      <p className="text-sm text-muted-foreground">Current CTR</p>
+                      <p className="text-lg font-semibold">
+                        {data.metrics.conversionRate.toFixed(1)}%
+                      </p>
+                    </div>
+                  </div>
                 </div>
               </CardContent>
             </Card>
             <Card>
               <CardHeader>
                 <CardTitle>Top Performing Offers</CardTitle>
-                <CardDescription>
-                  Based on click-through rate
-                </CardDescription>
+                <CardDescription>Sorted by redemptions</CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  {offerPerformance.map((offer) => (
+                  {data.offers.top.length === 0 && !isLoading && (
+                    <p className="text-sm text-muted-foreground">No offers yet.</p>
+                  )}
+                  {data.offers.top.map((offer) => (
                     <div key={offer.id} className="flex items-center justify-between">
-                      <div className="space-y-1">
-                        <p className="text-sm font-medium leading-none">{offer.title}</p>
-                        <p className="text-sm text-muted-foreground">{offer.partner}</p>
+                      <div>
+                        <p className="text-sm font-medium leading-none">
+                          {offer.title}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          {offer.status || "Unknown status"} • {offer.category || "Uncategorized"}
+                        </p>
                       </div>
-                      <div className="flex items-center space-x-4">
-                        <div className="text-right">
-                          <p className="text-sm font-medium">{offer.impressions}</p>
-                          <p className="text-xs text-muted-foreground">impressions</p>
-                        </div>
-                        <div className="text-right">
-                          <p className="text-sm font-medium">{offer.clicks}</p>
-                          <p className="text-xs text-muted-foreground">clicks</p>
-                        </div>
-                        <div className="text-right">
-                          <p className="text-sm font-medium">{offer.conversionRate}</p>
-                          <p className="text-xs text-muted-foreground">CTR</p>
-                        </div>
+                      <div className="text-right">
+                        <p className="text-sm font-semibold">
+                          {(offer.redemptions ?? 0).toLocaleString()}
+                        </p>
+                        <p className="text-xs text-muted-foreground">redemptions</p>
                       </div>
                     </div>
                   ))}
@@ -169,76 +291,166 @@ export default function AnalyticsPage() {
         </TabsContent>
 
         <TabsContent value="offers" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Offer Performance</CardTitle>
-              <CardDescription>
-                Detailed analytics for each offer
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                {offerPerformance.map((offer) => (
-                  <Card key={offer.id}>
-                    <CardHeader>
-                      <CardTitle className="text-lg">{offer.title}</CardTitle>
-                      <CardDescription>{offer.partner}</CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="grid gap-4 md:grid-cols-3">
-                        <div>
-                          <p className="text-sm font-medium">Impressions</p>
-                          <p className="text-2xl font-bold">{offer.impressions}</p>
-                        </div>
-                        <div>
-                          <p className="text-sm font-medium">Clicks</p>
-                          <p className="text-2xl font-bold">{offer.clicks}</p>
-                        </div>
-                        <div>
-                          <p className="text-sm font-medium">Conversion Rate</p>
-                          <p className="text-2xl font-bold">{offer.conversionRate}</p>
-                        </div>
+          {data.offers.list.length === 0 && !isLoading ? (
+            <Card>
+              <CardContent className="py-10 text-center text-muted-foreground">
+                You haven’t published any offers yet.
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="space-y-4">
+              {data.offers.list.map((offer) => (
+                <Card key={offer.id}>
+                  <CardHeader>
+                    <CardTitle className="text-lg">{offer.title}</CardTitle>
+                    <CardDescription>
+                      {offer.category || "Uncategorized"} • {offer.status || "Unknown status"} •{" "}
+                      {offer.start_date ? new Date(offer.start_date).toLocaleDateString() : "No start date"}
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="grid gap-4 md:grid-cols-3">
+                      <div>
+                        <p className="text-sm font-medium">Impressions</p>
+                        <p className="text-2xl font-bold">
+                          {(offer.impression_events ?? offer.max_redemptions ?? 0).toLocaleString()}
+                        </p>
                       </div>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
+                      <div>
+                        <p className="text-sm font-medium">Clicks / Redemptions</p>
+                        <p className="text-2xl font-bold">
+                          {(offer.click_events ?? offer.redemptions ?? 0).toLocaleString()}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium">Remaining</p>
+                        <p className="text-2xl font-bold">
+                          {Math.max((offer.max_redemptions ?? 0) - (offer.redemptions ?? 0), 0).toLocaleString()}
+                        </p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
+
         </TabsContent>
 
         <TabsContent value="employees" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Employee Engagement</CardTitle>
-              <CardDescription>
-                How employees are using the platform
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="h-[350px] flex items-center justify-center bg-muted rounded-lg">
-                <p className="text-muted-foreground">Employee Engagement Chart</p>
-              </div>
-            </CardContent>
-          </Card>
+          <div className="grid gap-4 md:grid-cols-2">
+            <Card>
+              <CardHeader>
+                <CardTitle>Recently Added</CardTitle>
+                <CardDescription>Latest employees onboarded</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {data.employees.recent.length === 0 && !isLoading ? (
+                  <p className="text-sm text-muted-foreground">No employees yet.</p>
+                ) : (
+                  data.employees.recent.map((employee) => (
+                    <div key={employee.id} className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm font-medium leading-none">
+                          {employee.name}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          {employee.role} • {employee.status}
+                        </p>
+                      </div>
+                      <p className="text-xs text-muted-foreground">
+                        {employee.created_at ? new Date(employee.created_at).toLocaleDateString() : "--"}
+                      </p>
+                    </div>
+                  ))
+                )}
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>Most Engaged Employees</CardTitle>
+                <CardDescription>Based on coupon generation</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {data.employees.engaged.length === 0 && !isLoading ? (
+                  <p className="text-sm text-muted-foreground">No usage recorded yet.</p>
+                ) : (
+                  data.employees.engaged.map((employee) => (
+                    <div key={employee.id} className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className="rounded-full bg-primary/10 p-2">
+                          <Sparkles className="h-4 w-4 text-primary" />
+                        </div>
+                        <div>
+                          <p className="text-sm font-medium leading-none">
+                            {employee.name}
+                          </p>
+                          <p className="text-xs text-muted-foreground">{employee.role}</p>
+                        </div>
+                      </div>
+                      <p className="text-sm font-semibold">
+                        {employee.engagements ?? 0}
+                      </p>
+                    </div>
+                  ))
+                )}
+              </CardContent>
+            </Card>
+          </div>
         </TabsContent>
 
-        <TabsContent value="partners" className="space-y-4">
+        <TabsContent value="activity" className="space-y-4">
           <Card>
             <CardHeader>
-              <CardTitle>Partner Performance</CardTitle>
-              <CardDescription>
-                How partner companies are performing
-              </CardDescription>
+              <CardTitle>Recent Activity</CardTitle>
+              <CardDescription>Offer launches, coupon claims, employee onboarding</CardDescription>
             </CardHeader>
-            <CardContent>
-              <div className="h-[350px] flex items-center justify-center bg-muted rounded-lg">
-                <p className="text-muted-foreground">Partner Performance Chart</p>
-              </div>
+            <CardContent className="space-y-4">
+              {data.activity.length === 0 && !isLoading ? (
+                <p className="text-sm text-muted-foreground">No activity recorded.</p>
+              ) : (
+                data.activity.map((item) => (
+                  <div
+                    key={item.id}
+                    className="flex items-center justify-between rounded-lg border p-3 text-sm"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div
+                        className={cn(
+                          "rounded-full p-2",
+                          item.type === "offer" && "bg-primary/10 text-primary",
+                          item.type === "coupon" && "bg-green-100 text-green-600",
+                          item.type === "employee" && "bg-blue-100 text-blue-600",
+                        )}
+                      >
+                        <ActivityIcon className="h-4 w-4" />
+                      </div>
+                      <div>
+                        <p className="font-medium leading-none">{item.title}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {item.description}
+                        </p>
+                      </div>
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      {item.timestamp ? new Date(item.timestamp).toLocaleString() : "--"}
+                    </p>
+                  </div>
+                ))
+              )}
             </CardContent>
           </Card>
         </TabsContent>
       </Tabs>
+
+      {isLoading && (
+        <Card>
+          <CardContent className="py-6 text-center text-sm text-muted-foreground">
+            Loading analytics...
+          </CardContent>
+        </Card>
+      )}
     </div>
   )
-} 
+}

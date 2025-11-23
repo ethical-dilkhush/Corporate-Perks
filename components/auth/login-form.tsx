@@ -35,11 +35,13 @@ export function LoginForm({ role }: LoginFormProps) {
         if (error) {
           if (error.message.includes('Invalid login credentials')) {
             toast.error("Invalid credentials", {
-              description: "Please check your email and password."
+              description: "Please check your email and password.",
+              duration: 3000,
             })
           } else {
             toast.error("Login failed", {
-              description: "An error occurred during login. Please try again."
+              description: "An error occurred during login. Please try again.",
+              duration: 3000,
             })
           }
           return
@@ -55,13 +57,15 @@ export function LoginForm({ role }: LoginFormProps) {
 
           if (companyError || !companyData) {
             toast.error("Access Denied", {
-              description: "This account is not registered as a company. Please contact support if you think this is a mistake."
+              description: "This account is not registered as a company. Please contact support if you think this is a mistake.",
+              duration: 3000,
             })
             return
           }
 
           toast.success("Welcome back!", {
-            description: "Successfully logged in to your company account."
+            description: "Successfully logged in to your company account.",
+            duration: 3000,
           })
 
           router.push('/company')
@@ -70,14 +74,16 @@ export function LoginForm({ role }: LoginFormProps) {
       } else {
         // Admin and employee continue with email OTP
         toast.success("Verification email sent", {
-          description: "Check your email for the login link."
+          description: "Check your email for the login link.",
+          duration: 3000,
         })
 
         router.push(`/auth/verify-otp?role=${role}`)
       }
     } catch (error) {
       toast.error("Login Error", {
-        description: "An unexpected error occurred. Please try again later."
+        description: "An unexpected error occurred. Please try again later.",
+        duration: 2000,
       })
     } finally {
       setIsLoading(false)

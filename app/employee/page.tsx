@@ -94,7 +94,7 @@ export default function EmployeeHomePage() {
               )}
             </div>
             <h2 className="text-2xl md:text-3xl font-semibold text-foreground">
-              Welcome to the <span className="text-foreground">Corporate Offers Portal!</span>
+              the <span className="text-foreground">Corporate Offers Portal!</span>
             </h2>
             <p className="text-lg md:text-xl text-foreground">
               Explore exclusive discounts specially curated for you by our partner companies.

@@ -1,9 +1,9 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useMemo, useCallback } from "react"
 import { useRouter } from "next/navigation"
 import { Building2, Plus, Search, ExternalLink, MoreHorizontal, Mail, Phone, MapPin, Check, Clock, X } from "lucide-react"
-import { supabase } from "@/lib/supabase"
+import { createClientComponentClient } from "@supabase/auth-helpers-nextjs"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import {
@@ -59,22 +59,21 @@ interface Partner {
 export default function PartnersPage() {
   const router = useRouter()
   const { toast } = useToast()
+  const supabase = useMemo(() => createClientComponentClient(), [])
   const [partners, setPartners] = useState<Partner[]>([])
   const [searchQuery, setSearchQuery] = useState("")
   const [isLoading, setIsLoading] = useState(true)
   const [selectedPartner, setSelectedPartner] = useState<Partner | null>(null)
   const [isDetailsOpen, setIsDetailsOpen] = useState(false)
   const [isRemoving, setIsRemoving] = useState(false)
+  const [companyId, setCompanyId] = useState<string | null>(null)
 
-  useEffect(() => {
-    fetchPartners()
-  }, [])
-
-  const fetchPartners = async () => {
+  const fetchPartners = useCallback(async (currentCompanyId: string) => {
     try {
       const { data, error } = await supabase
         .from("partners")
         .select("*")
+        .eq("company_id", currentCompanyId)
         .order("created_at", { ascending: false })
 
       if (error) {
@@ -88,7 +87,65 @@ export default function PartnersPage() {
     } finally {
       setIsLoading(false)
     }
-  }
+  }, [supabase])
+
+  const loadCompanySession = useCallback(async () => {
+    setIsLoading(true)
+    const {
+      data: sessionData,
+      error,
+    } = await supabase.auth.getSession()
+
+    if (error) {
+      console.error("Failed to load company session:", error)
+      toast({
+        title: "Unable to verify session",
+        description: "Please try signing in again.",
+        variant: "destructive",
+      })
+      setCompanyId(null)
+      setPartners([])
+      setIsLoading(false)
+      return
+    }
+
+    const session = sessionData.session
+    if (!session) {
+      setCompanyId(null)
+      setPartners([])
+      setIsLoading(false)
+      router.push("/auth/login")
+      return
+    }
+
+    setCompanyId(session.user.id)
+    await fetchPartners(session.user.id)
+  }, [fetchPartners, router, supabase, toast])
+
+  useEffect(() => {
+    let isMounted = true
+    loadCompanySession()
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (!isMounted) return
+
+      if (session) {
+        setCompanyId(session.user.id)
+        fetchPartners(session.user.id)
+      } else {
+        setCompanyId(null)
+        setPartners([])
+        router.push("/auth/login")
+      }
+    })
+
+    return () => {
+      isMounted = false
+      subscription.unsubscribe()
+    }
+  }, [fetchPartners, loadCompanySession, router, supabase])
 
   const filteredPartners = partners.filter((partner) =>
     partner.company_name.toLowerCase().includes(searchQuery.toLowerCase()) ||

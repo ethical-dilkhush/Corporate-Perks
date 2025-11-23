@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -234,6 +234,28 @@ export default function AdminCompaniesPage() {
   const [showRequestDetails, setShowRequestDetails] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
 
+  const fetchRegistrationRequests = useCallback(async () => {
+    try {
+      setRequestsLoading(true);
+      setRequestsError(null);
+
+      const response = await fetch("/api/companies/requests");
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data?.error || "Failed to fetch registration requests");
+      }
+
+      setRegistrationRequests(data.requests || []);
+    } catch (err) {
+      console.error('Registration requests fetch error:', err);
+      setRequestsError(err instanceof Error ? err.message : 'An unknown error occurred');
+      toast.error('Failed to fetch registration requests');
+    } finally {
+      setRequestsLoading(false);
+    }
+  }, []);
+
   useEffect(() => {
     let mounted = true;
 
@@ -277,46 +299,8 @@ export default function AdminCompaniesPage() {
   }, []);
 
   useEffect(() => {
-    let mounted = true;
-
-    const fetchRegistrationRequests = async () => {
-      try {
-        setRequestsLoading(true);
-        setRequestsError(null);
-
-        const supabase = createClientComponentClient();
-
-        const { data: requestsData, error: requestsError } = await supabase
-          .from('company_registration_requests')
-          .select('*')
-          .order('created_at', { ascending: false });
-
-        if (requestsError) {
-          throw new Error(`Registration requests fetch error: ${requestsError.message}`);
-        }
-
-        if (mounted) {
-          setRegistrationRequests(requestsData || []);
-        }
-      } catch (err) {
-        console.error('Registration requests fetch error:', err);
-        if (mounted) {
-          setRequestsError(err instanceof Error ? err.message : 'An unknown error occurred');
-          toast.error('Failed to fetch registration requests');
-        }
-      } finally {
-        if (mounted) {
-          setRequestsLoading(false);
-        }
-      }
-    };
-
     fetchRegistrationRequests();
-
-    return () => {
-      mounted = false;
-    };
-  }, []);
+  }, [fetchRegistrationRequests]);
 
   const handleApproveRequest = async (requestId: string) => {
     try {
@@ -342,28 +326,19 @@ export default function AdminCompaniesPage() {
       })
 
       // Refresh the lists
+      await fetchRegistrationRequests()
+
       const supabase = createClientComponentClient()
-      const [requestsResponse, companiesResponse] = await Promise.all([
-        supabase
-          .from('company_registration_requests')
-          .select('*')
-          .order('created_at', { ascending: false }),
-        supabase
-          .from('companies')
-          .select('*')
-          .order('created_at', { ascending: false })
-      ])
+      const { data: companiesData, error: companiesError } = await supabase
+        .from('companies')
+        .select('*')
+        .order('created_at', { ascending: false })
 
-      if (requestsResponse.error) {
-        throw new Error('Failed to refresh requests list')
-      }
-
-      if (companiesResponse.error) {
+      if (companiesError) {
         throw new Error('Failed to refresh companies list')
       }
 
-      setRegistrationRequests(requestsResponse.data || [])
-      setCompanies(companiesResponse.data || [])
+      setCompanies(companiesData || [])
     } catch (error) {
       console.error('Error in handleApproveRequest:', error)
       toast.error('Failed to approve company', {
@@ -376,75 +351,44 @@ export default function AdminCompaniesPage() {
 
   const handleRejectRequest = async (requestId: string) => {
     try {
+      setIsLoading(true)
+
+      const response = await fetch('/api/companies/reject', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ requestId }),
+      })
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data?.error || 'Failed to reject registration request')
+      }
+
+      toast.success('Registration request rejected')
+
+      await fetchRegistrationRequests()
+
       const supabase = createClientComponentClient()
-      
-      // 1. Get the request details first
-      const { data: requestData, error: fetchError } = await supabase
-        .from('company_registration_requests')
-        .select('*')
-        .eq('id', requestId)
-        .single()
-
-      if (fetchError) {
-        console.error('Fetch Error:', fetchError)
-        throw new Error('Failed to fetch request details')
-      }
-
-      if (!requestData) {
-        throw new Error('Request not found')
-      }
-
-      // 2. Delete the company if it exists
-      const { error: deleteError } = await supabase
+      const { data: companiesData, error: companiesError } = await supabase
         .from('companies')
-        .delete()
-        .eq('email', requestData.contact_email)
+        .select('*')
+        .order('created_at', { ascending: false })
 
-      if (deleteError) {
-        console.error('Company Delete Error:', deleteError)
-        // Continue with rejection even if company deletion fails
-      }
-
-      // 3. Update the request status to rejected
-      const { error: updateError } = await supabase
-        .from('company_registration_requests')
-        .update({ status: 'rejected' })
-        .eq('id', requestId)
-
-      if (updateError) {
-        console.error('Update Error:', updateError)
-        throw new Error('Failed to update request status')
-      }
-
-      toast.success('Registration request rejected and company record deleted')
-      
-      // 4. Refresh both lists
-      const [requestsResponse, companiesResponse] = await Promise.all([
-        supabase
-          .from('company_registration_requests')
-          .select('*')
-          .order('created_at', { ascending: false }),
-        supabase
-          .from('companies')
-          .select('*')
-          .order('created_at', { ascending: false })
-      ])
-
-      if (requestsResponse.error) {
-        console.error('Requests Refresh Error:', requestsResponse.error)
-        throw new Error('Failed to refresh requests list')
-      }
-
-      if (companiesResponse.error) {
-        console.error('Companies Refresh Error:', companiesResponse.error)
+      if (companiesError) {
         throw new Error('Failed to refresh companies list')
       }
 
-      setRegistrationRequests(requestsResponse.data || [])
-      setCompanies(companiesResponse.data || [])
+      setCompanies(companiesData || [])
     } catch (error) {
       console.error('Error in handleRejectRequest:', error)
-      toast.error(error instanceof Error ? error.message : 'Failed to reject registration request')
+      toast.error(
+        error instanceof Error ? error.message : 'Failed to reject registration request'
+      )
+    } finally {
+      setIsLoading(false)
     }
   }
 
