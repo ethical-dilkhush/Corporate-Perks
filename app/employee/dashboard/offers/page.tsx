@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -39,6 +39,8 @@ export default function OffersPage() {
   const [searchQuery, setSearchQuery] = useState("")
   const [selectedCategory, setSelectedCategory] = useState("All")
   const [loading, setLoading] = useState(true)
+  const [generatingOfferId, setGeneratingOfferId] = useState<string | null>(null)
+  const loggedImpressionsRef = useRef<Set<string>>(new Set())
   
   // Refined date formatting function
   const formatOfferDate = (dateString: string | null | undefined): string => {
@@ -67,6 +69,56 @@ export default function OffersPage() {
     }
   };
 
+  const logOfferEvent = async (offerId: string, eventType: "impression" | "click") => {
+    try {
+      await fetch("/api/offer-events", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          offerId,
+          eventType,
+        }),
+      })
+    } catch (error) {
+      console.error("Failed to log offer event:", error)
+    }
+  }
+
+  const handleGenerateCoupon = async (offer: Offer) => {
+    if (generatingOfferId) return
+    setGeneratingOfferId(offer.id)
+    try {
+      await logOfferEvent(offer.id, "click")
+
+      const response = await fetch("/api/coupons/generate", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ offer_id: offer.id }),
+      })
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data?.error || "Failed to generate coupon")
+      }
+
+      toast.success("Coupon generated successfully", {
+        description: data?.coupon?.code
+          ? `Use code ${data.coupon.code} before ${data.coupon.valid_until ? new Date(data.coupon.valid_until).toLocaleDateString() : "expiry"}`
+          : "You can now redeem this offer.",
+      })
+    } catch (error) {
+      console.error("Generate coupon error:", error)
+      toast.error(error instanceof Error ? error.message : "Failed to generate coupon")
+    } finally {
+      setGeneratingOfferId(null)
+    }
+  }
+
   // Fetch offers from the API - Keep raw data
   useEffect(() => {
     async function fetchOffers() {
@@ -87,6 +139,15 @@ export default function OffersPage() {
     }
     fetchOffers()
   }, [])
+
+  useEffect(() => {
+    offers.forEach((offer) => {
+      if (!loggedImpressionsRef.current.has(offer.id)) {
+        logOfferEvent(offer.id, "impression")
+        loggedImpressionsRef.current.add(offer.id)
+      }
+    })
+  }, [offers])
 
   // Filter offers based on search query and category
   const filteredOffers = offers.filter(offer => {
@@ -174,7 +235,19 @@ export default function OffersPage() {
               </CardContent>
               <CardFooter className="flex justify-between mt-auto pt-4">
 
-              <Button > Generate Coupon</Button>
+              <Button
+                onClick={() => handleGenerateCoupon(offer)}
+                disabled={generatingOfferId === offer.id}
+              >
+                {generatingOfferId === offer.id ? (
+                  <span className="flex items-center gap-2">
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Generating...
+                  </span>
+                ) : (
+                  "Generate Coupon"
+                )}
+              </Button>
                   
       
               </CardFooter>

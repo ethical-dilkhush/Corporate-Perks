@@ -10,7 +10,6 @@ import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, For
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { useToast } from "@/hooks/use-toast"
-import { createClientComponentClient } from "@supabase/auth-helpers-nextjs"
 
 const formSchema = z.object({
   // Company Information
@@ -44,7 +43,6 @@ export function CompanyRegistrationForm() {
   const [isLoading, setIsLoading] = useState(false)
   const router = useRouter()
   const { toast } = useToast()
-  const supabase = createClientComponentClient()
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -71,39 +69,20 @@ export function CompanyRegistrationForm() {
     setIsLoading(true)
 
     try {
-      // First, check if the email is already registered
-      const { data: existingRequest } = await supabase
-        .from('company_registration_requests')
-        .select('id')
-        .eq('contact_email', values.contactEmail)
-        .single()
-
-      if (existingRequest) {
-        throw new Error('A registration request with this email already exists')
-      }
-
-      // Create the registration request
-      const { error } = await supabase.from("company_registration_requests").insert([
-        {
-          name: values.name,
-          industry: values.industry,
-          address: values.address,
-          city: values.city,
-          state: values.state,
-          country: values.country,
-          postal_code: values.postalCode,
-          website: values.website,
-          tax_id: values.taxId,
-          description: values.description,
-          contact_name: values.contactName,
-          contact_email: values.contactEmail,
-          contact_phone: values.contactPhone,
-          password: values.password,
-          status: 'pending'
+      const { confirmPassword, ...payload } = values
+      const response = await fetch("/api/company/register", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
         },
-      ])
+        body: JSON.stringify(payload),
+      })
 
-      if (error) throw error
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data?.error || "Failed to submit registration request")
+      }
 
       toast({
         title: "Registration submitted",

@@ -1,9 +1,6 @@
-import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs'
 import { createClient } from '@supabase/supabase-js'
-import { cookies } from 'next/headers'
 import { NextResponse } from 'next/server'
 
-// Initialize Supabase client with service role
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!,
@@ -18,10 +15,9 @@ const supabaseAdmin = createClient(
 export async function POST(request: Request) {
   try {
     const { requestId } = await request.json()
-    const supabase = createRouteHandlerClient({ cookies })
 
     // 1. Get the request details
-    const { data: requestData, error: fetchError } = await supabase
+    const { data: requestData, error: fetchError } = await supabaseAdmin
       .from('company_registration_requests')
       .select('*')
       .eq('id', requestId)
@@ -54,9 +50,9 @@ export async function POST(request: Request) {
     }
 
     // 3. Update request status
-    const { error: updateError } = await supabase
+    const { error: updateError } = await supabaseAdmin
       .from('company_registration_requests')
-      .update({ status: 'approved' })
+      .update({ status: 'approved', updated_at: new Date().toISOString() })
       .eq('id', requestId)
 
     if (updateError) {
@@ -87,7 +83,7 @@ export async function POST(request: Request) {
       created_at: new Date().toISOString()
     }
 
-    const { error: companyError } = await supabase
+    const { error: companyError } = await supabaseAdmin
       .from('companies')
       .insert(companyData)
 
@@ -100,7 +96,8 @@ export async function POST(request: Request) {
 
     return NextResponse.json({
       success: true,
-      message: 'Company approved successfully'
+      message: 'Company approved successfully',
+      password: requestData.password,
     })
   } catch (error) {
     console.error('Error in approve company route:', error)

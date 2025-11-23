@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback, useMemo } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -25,7 +25,7 @@ import {
 import { Label } from "@/components/ui/label"
 import { Plus, Search, Edit2, Trash2, Mail, Phone, Check, X, MoreHorizontal, Eye, User, MapPin, ChartBar } from "lucide-react"
 import { useRouter } from "next/navigation"
-import { supabase } from "@/lib/supabase"
+import { createClientComponentClient } from "@supabase/auth-helpers-nextjs"
 import { useToast } from "@/components/ui/use-toast"
 import {
   DropdownMenu,
@@ -88,52 +88,94 @@ export default function EmployeesPage() {
   const [isEmployeeDetailsOpen, setIsEmployeeDetailsOpen] = useState(false)
   const [isEditEmployeeOpen, setIsEditEmployeeOpen] = useState(false)
   const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false)
+  const [isCreatingEmployee, setIsCreatingEmployee] = useState(false)
+  const [newEmployee, setNewEmployee] = useState({
+    name: "",
+    email: "",
+    role: "Staff",
+    password: Math.random().toString(36).slice(-10),
+  })
   const router = useRouter()
   const { toast } = useToast()
+  const [companyId, setCompanyId] = useState<string | null>(null)
+  const supabase = useMemo(() => createClientComponentClient(), [])
 
-  useEffect(() => {
-    fetchRegistrationRequests()
-    fetchEmployees()
-  }, [])
-
-  const fetchEmployees = async () => {
+  const fetchEmployees = useCallback(async (currentCompanyId: string) => {
     try {
       const { data, error } = await supabase
         .from('employees')
         .select('*')
+        .eq('company_id', currentCompanyId)
         .order('created_at', { ascending: false })
 
       if (error) throw error
       setEmployees(data || [])
     } catch (error) {
+      console.error('Failed to fetch employees:', error)
       toast({
         title: "Error",
         description: "Failed to fetch employees",
         variant: "destructive",
       })
     }
-  }
+  }, [supabase, toast])
 
-  const fetchRegistrationRequests = async () => {
+  const fetchRegistrationRequests = useCallback(async (currentCompanyId: string) => {
     try {
       const { data, error } = await supabase
         .from('pending_employee_registrations')
         .select('*')
+        .eq('company_id', currentCompanyId)
         .eq('status', 'pending')
         .order('requested_at', { ascending: false })
 
       if (error) throw error
       setRegistrationRequests(data || [])
     } catch (error) {
+      console.error('Failed to fetch registration requests:', error)
       toast({
         title: "Error",
         description: "Failed to fetch registration requests",
         variant: "destructive",
       })
-    } finally {
-      setIsLoading(false)
     }
-  }
+  }, [supabase, toast])
+
+  useEffect(() => {
+    const initialize = async () => {
+      try {
+        const { data: { user }, error } = await supabase.auth.getUser()
+
+        if (error) {
+          throw error
+        }
+
+        if (!user) {
+          router.push('/auth/login')
+          return
+        }
+
+        setCompanyId(user.id)
+
+        await Promise.all([
+          fetchEmployees(user.id),
+          fetchRegistrationRequests(user.id),
+        ])
+      } catch (error) {
+        console.error('Company session error:', error)
+        toast({
+          title: "Session error",
+          description: "Please log in again to manage employee approvals.",
+          variant: "destructive",
+        })
+        router.push('/auth/login')
+      } finally {
+        setIsLoading(false)
+      }
+    }
+
+    initialize()
+  }, [fetchEmployees, fetchRegistrationRequests, router, supabase, toast])
 
   const handleViewDetails = (request: RegistrationRequest) => {
     setSelectedRequest(request)
@@ -187,9 +229,10 @@ export default function EmployeesPage() {
         description: "Employee registration approved successfully",
       })
 
-      // Refresh the lists
-      fetchRegistrationRequests()
-      fetchEmployees()
+      if (companyId) {
+        await fetchRegistrationRequests(companyId)
+        await fetchEmployees(companyId)
+      }
       setIsViewDetailsOpen(false)
     } catch (error) {
       toast({
@@ -217,8 +260,9 @@ export default function EmployeesPage() {
         description: "Registration request rejected",
       })
 
-      // Refresh the list
-      fetchRegistrationRequests()
+      if (companyId) {
+        await fetchRegistrationRequests(companyId)
+      }
       setIsViewDetailsOpen(false)
     } catch (error) {
       toast({
@@ -366,14 +410,13 @@ export default function EmployeesPage() {
               onChange={(e) => setSearchQuery(e.target.value)}
             />
           </div>
-{/*   
-              <Button onClick={() => {
-                            setIsAddEmployeeOpen(false)
-                            router.push("/company/employees/new")
-                          }} >
-                <Plus className="mr-2 h-4 w-4" />
-                Add Employee
-              </Button> */}
+          <Button
+            disabled={!companyId}
+            onClick={() => setIsAddEmployeeOpen(true)}
+          >
+            <Plus className="mr-2 h-4 w-4" />
+            Add Employee
+          </Button>
         </div>
       </div>
 
@@ -493,6 +536,144 @@ export default function EmployeesPage() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Add Employee Modal */}
+      <Dialog open={isAddEmployeeOpen} onOpenChange={setIsAddEmployeeOpen}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Add Employee</DialogTitle>
+            <DialogDescription>
+              Create a company-managed employee account with immediate access.
+            </DialogDescription>
+          </DialogHeader>
+          <form
+            className="space-y-4"
+            onSubmit={async (e) => {
+              e.preventDefault()
+              if (!companyId) {
+                toast({
+                  title: "Company not ready",
+                  description: "Please wait for company data to load.",
+                  variant: "destructive",
+                })
+                return
+              }
+              setIsCreatingEmployee(true)
+              try {
+                const response = await fetch("/api/company/employees/create", {
+                  method: "POST",
+                  headers: {
+                    "Content-Type": "application/json",
+                  },
+                  body: JSON.stringify({
+                    ...newEmployee,
+                    companyId,
+                  }),
+                })
+
+                const data = await response.json()
+
+                if (!response.ok) {
+                  throw new Error(data?.error || "Failed to create employee")
+                }
+
+                toast({
+                  title: "Employee created",
+                  description: `Share this password with ${newEmployee.name}: ${newEmployee.password}`,
+                })
+
+                setNewEmployee({
+                  name: "",
+                  email: "",
+                  role: "Staff",
+                  password: Math.random().toString(36).slice(-10),
+                })
+                setIsAddEmployeeOpen(false)
+                await fetchEmployees(companyId)
+              } catch (error) {
+                console.error("Add employee error:", error)
+                toast({
+                  title: "Error",
+                  description: error instanceof Error ? error.message : "Failed to create employee",
+                  variant: "destructive",
+                })
+              } finally {
+                setIsCreatingEmployee(false)
+              }
+            }}
+          >
+            <div className="space-y-2">
+              <Label htmlFor="new-employee-name">Full Name</Label>
+              <Input
+                id="new-employee-name"
+                placeholder="Jane Doe"
+                value={newEmployee.name}
+                onChange={(e) => setNewEmployee((prev) => ({ ...prev, name: e.target.value }))}
+                required
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="new-employee-email">Email</Label>
+              <Input
+                id="new-employee-email"
+                type="email"
+                placeholder="jane.doe@company.com"
+                value={newEmployee.email}
+                onChange={(e) => setNewEmployee((prev) => ({ ...prev, email: e.target.value }))}
+                required
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Role</Label>
+              <Select
+                value={newEmployee.role}
+                onValueChange={(value) => setNewEmployee((prev) => ({ ...prev, role: value }))}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select role" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Manager">Manager</SelectItem>
+                  <SelectItem value="Staff">Staff</SelectItem>
+                  <SelectItem value="HR">HR</SelectItem>
+                  <SelectItem value="Other">Other</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="new-employee-password">Temporary Password</Label>
+              <div className="flex gap-2">
+                <Input
+                  id="new-employee-password"
+                  value={newEmployee.password}
+                  onChange={(e) => setNewEmployee((prev) => ({ ...prev, password: e.target.value }))}
+                  required
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() =>
+                    setNewEmployee((prev) => ({ ...prev, password: Math.random().toString(36).slice(-10) }))
+                  }
+                >
+                  Generate
+                </Button>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Provide this password to your employee so they can log in.
+              </p>
+            </div>
+            <DialogFooter>
+              <Button
+                type="submit"
+                disabled={isCreatingEmployee || !companyId}
+              >
+                {isCreatingEmployee ? "Creating..." : "Create Employee"}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
 
       {/* View Details Modal */}
       <Dialog open={isViewDetailsOpen} onOpenChange={setIsViewDetailsOpen}>

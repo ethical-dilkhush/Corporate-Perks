@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -20,9 +20,8 @@ const formSchema = z.object({
   email: z.string().email("Please enter a valid email address"),
   password: z.string().min(8, "Password must be at least 8 characters"),
   confirmPassword: z.string().min(8, "Please confirm your password"),
-  companyName: z.string().min(2, "Company name must be at least 2 characters"),
+  companyId: z.string().min(1, "Please select your company"),
   role: z.string().min(1, "Please select a role"),
-  status: z.string().min(1, "Please select a status"),
   address: z.string().min(5, "Address must be at least 5 characters"),
   city: z.string().min(2, "City is required"),
   state: z.string().min(2, "State/Province is required"),
@@ -41,11 +40,13 @@ export function RegisterForm({ role }: RegisterFormProps) {
   const router = useRouter()
   const { toast } = useToast()
   const [isLoading, setIsLoading] = useState(false)
+  const [companies, setCompanies] = useState<{ id: string; name: string }[]>([])
+  const [companiesLoading, setCompaniesLoading] = useState(true)
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-    name: "",
+      name: "",
       email: "",
       password: "",
       confirmPassword: "",
@@ -54,12 +55,40 @@ export function RegisterForm({ role }: RegisterFormProps) {
       state: "",
       country: "",
       postalCode: "",
-    mobile: "",
+      mobile: "",
       role: "Staff",
-      status: "Pending",
-    companyName: "",
+      companyId: "",
     },
   })
+
+  useEffect(() => {
+    const fetchCompanies = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('companies')
+          .select('id, name')
+          .eq('status', 'Active')
+          .order('name', { ascending: true })
+
+        if (error) {
+          throw error
+        }
+
+        setCompanies(data || [])
+      } catch (error) {
+        console.error('Failed to load companies:', error)
+        toast({
+          title: "Unable to load companies",
+          description: "Please refresh the page or try again later.",
+          variant: "destructive",
+        })
+      } finally {
+        setCompaniesLoading(false)
+      }
+    }
+
+    fetchCompanies()
+  }, [toast])
 
   const handleEmployeeSubmit = async (values: z.infer<typeof formSchema>) => {
     setIsLoading(true)
@@ -125,6 +154,7 @@ export function RegisterForm({ role }: RegisterFormProps) {
           country: values.country,
           postal_code: values.postalCode,
           password_hash: values.password,
+          company_id: values.companyId,
           status: 'pending'
         })
 
@@ -217,17 +247,37 @@ export function RegisterForm({ role }: RegisterFormProps) {
               <div className="space-y-4">
                 <div className="space-y-1">
                   <h2 className="text-base font-medium">Company Information</h2>
-                  <p className="text-xs text-muted-foreground">Provide your company details.</p>
+                  <p className="text-xs text-muted-foreground">Select the company you belong to.</p>
                 </div>
                 <FormField
                   control={form.control}
-                  name="companyName"
+                  name="companyId"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel className="text-xs font-medium">Company Name</FormLabel>
-                      <FormControl>
-                        <Input placeholder="Acme Corporation" {...field} />
-                      </FormControl>
+                      <FormLabel className="text-xs font-medium">Company</FormLabel>
+                      <Select
+                        onValueChange={field.onChange}
+                        value={field.value}
+                        disabled={companiesLoading || isLoading || companies.length === 0}
+                      >
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder={companiesLoading ? "Loading companies..." : "Select company"} />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {companies.map((company) => (
+                            <SelectItem key={company.id} value={company.id}>
+                              {company.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      {(!companiesLoading && companies.length === 0) && (
+                        <p className="text-xs text-muted-foreground mt-1">
+                          No approved companies available yet. Please try again later.
+                        </p>
+                      )}
                       <FormMessage />
                     </FormItem>
                   )}
@@ -250,29 +300,6 @@ export function RegisterForm({ role }: RegisterFormProps) {
                             <SelectItem value="Staff">Staff</SelectItem>
                             <SelectItem value="HR">HR</SelectItem>
                             <SelectItem value="Other">Other</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="status"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className="text-xs font-medium">Status</FormLabel>
-                      <FormControl>
-                        <Select onValueChange={field.onChange} defaultValue={field.value}>
-                          <FormControl>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Select status" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            <SelectItem value="Active">Active</SelectItem>
-                            <SelectItem value="Inactive">Inactive</SelectItem>
                           </SelectContent>
                         </Select>
                       </FormControl>
@@ -399,7 +426,11 @@ export function RegisterForm({ role }: RegisterFormProps) {
             </div>
 
             <div className="flex justify-center">
-              <Button type="submit" className="w-full max-w-xs" disabled={isLoading}>
+              <Button
+                type="submit"
+                className="w-full max-w-xs"
+                disabled={isLoading || companiesLoading || companies.length === 0}
+              >
                 {isLoading ? "Submitting..." : "Submit Registration"}
               </Button>
             </div>
