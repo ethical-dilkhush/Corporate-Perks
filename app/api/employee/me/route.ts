@@ -36,12 +36,18 @@ export async function GET() {
       );
     }
 
+    const displayName =
+      (employee.name && employee.name.trim()) ||
+      [employee.first_name, employee.last_name].filter(Boolean).join(" ").trim() ||
+      (employee.full_name && employee.full_name.trim()) ||
+      employee.email.split("@")[0];
+
     // Return employee data
     return NextResponse.json({
       employee: {
         id: employee.id,
         email: employee.email,
-        name: employee.name || employee.first_name || employee.email.split('@')[0],
+        name: displayName,
         // Add any other employee fields you want to display
       }
     });

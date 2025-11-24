@@ -5,6 +5,7 @@ import { NavWrapper } from "@/components/layout/nav-wrapper"
 import { ThemeProvider } from "@/components/theme-provider"
 import { Toaster } from "sonner"
 import { EmployeeProvider } from "@/contexts/employee-context"
+import { SupabaseListener } from "@/components/providers/supabase-listener"
 
 const inter = Inter({ subsets: ["latin"] })
 
@@ -28,6 +29,7 @@ export default function RootLayout({
           disableTransitionOnChange
         >
           <EmployeeProvider>
+            <SupabaseListener />
             <div className="flex min-h-screen flex-col">
               <NavWrapper />
               <main className="flex-1">{children}</main>

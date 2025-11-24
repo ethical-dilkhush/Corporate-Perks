@@ -30,6 +30,7 @@ export async function GET() {
         
       return {
         ...offer,
+        image_url: offer.image_url || offer.image || offer.logo_url || null,
         validUntilFormatted // Keep the formatted property name for consistency
       };
     });

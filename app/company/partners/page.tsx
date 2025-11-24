@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo, useCallback } from "react"
 import { useRouter } from "next/navigation"
-import { Building2, Plus, Search, ExternalLink, MoreHorizontal, Mail, Phone, MapPin, Check, Clock, X } from "lucide-react"
+import { Building2, Plus, Search, ExternalLink, Mail, Phone, MapPin } from "lucide-react"
 import { createClientComponentClient } from "@supabase/auth-helpers-nextjs"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -21,19 +21,12 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
 import { Badge } from "@/components/ui/badge"
 import {
   Dialog,
   DialogContent,
   DialogDescription,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
@@ -41,6 +34,8 @@ import { useToast } from "@/hooks/use-toast"
 
 interface Partner {
   id: string
+  owner_company_id: string | null
+  partner_company_id: string | null
   company_name: string
   business_type: string
   email: string
@@ -73,7 +68,7 @@ export default function PartnersPage() {
       const { data, error } = await supabase
         .from("partners")
         .select("*")
-        .eq("company_id", currentCompanyId)
+        .eq("owner_company_id", currentCompanyId)
         .order("created_at", { ascending: false })
 
       if (error) {
@@ -153,10 +148,6 @@ export default function PartnersPage() {
     partner.email.toLowerCase().includes(searchQuery.toLowerCase())
   )
 
-  const handleContactPartner = (email: string) => {
-    window.location.href = `mailto:${email}`
-  }
-
   const handleViewDetails = (partner: Partner) => {
     setSelectedPartner(partner)
     setIsDetailsOpen(true)
@@ -174,9 +165,9 @@ export default function PartnersPage() {
         throw error
       }
 
-      // Remove the partner from the local state
-      setPartners(partners.filter(p => p.id !== partnerId))
-      
+      setPartners((prev) => prev.filter((p) => p.id !== partnerId))
+      setIsDetailsOpen(false)
+
       toast({
         title: "Partner removed",
         description: "The partner has been successfully removed.",
@@ -268,21 +259,22 @@ export default function PartnersPage() {
                       <TableHead>Company</TableHead>
                       <TableHead>Business Type</TableHead>
                       <TableHead>Contact</TableHead>
-                      <TableHead>Employees</TableHead>
-                      <TableHead>Partnership</TableHead>
-                      <TableHead></TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {filteredPartners.length === 0 ? (
                       <TableRow>
-                        <TableCell colSpan={6} className="text-center">
+                        <TableCell colSpan={3} className="text-center">
                           No partners found
                         </TableCell>
                       </TableRow>
                     ) : (
                       filteredPartners.map((partner) => (
-                        <TableRow key={partner.id}>
+                        <TableRow
+                          key={partner.id}
+                          onClick={() => handleViewDetails(partner)}
+                          className="cursor-pointer hover:bg-muted/40"
+                        >
                           <TableCell>
                             <div className="flex items-center gap-3">
                               {partner.image_url ? (
@@ -316,45 +308,6 @@ export default function PartnersPage() {
                                 <span>{partner.phone}</span>
                               </div>
                             </div>
-                          </TableCell>
-                          <TableCell>{partner.employee_count}</TableCell>
-                          <TableCell>
-                            <Badge
-                              variant={partner.partnership_type === "Exclusive" ? "default" : "secondary"}
-                              className="capitalize"
-                            >
-                              {partner.partnership_type}
-                            </Badge>
-                          </TableCell>
-                          <TableCell>
-                            <DropdownMenu>
-                              <DropdownMenuTrigger asChild>
-                                <Button variant="ghost" size="icon">
-                                  <MoreHorizontal className="h-4 w-4" />
-                                </Button>
-                              </DropdownMenuTrigger>
-                              <DropdownMenuContent align="end" className="w-48">
-                                <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                                <DropdownMenuSeparator />
-                                <DropdownMenuItem onClick={() => handleContactPartner(partner.email)}>
-                                  <Mail className="mr-2 h-4 w-4" />
-                                  Contact Partner
-                                </DropdownMenuItem>
-                                <DropdownMenuItem onClick={() => handleViewDetails(partner)}>
-                                  <ExternalLink className="mr-2 h-4 w-4" />
-                                  View Details
-                                </DropdownMenuItem>
-                                <DropdownMenuSeparator />
-                                <DropdownMenuItem 
-                                  className="text-destructive"
-                                  onClick={() => handleRemovePartner(partner.id)}
-                                  disabled={isRemoving}
-                                >
-                                  <X className="mr-2 h-4 w-4" />
-                                  Remove Partner
-                                </DropdownMenuItem>
-                              </DropdownMenuContent>
-                            </DropdownMenu>
                           </TableCell>
                         </TableRow>
                       ))
@@ -450,6 +403,27 @@ export default function PartnersPage() {
                 </div>
               </div>
             </div>
+          )}
+          {selectedPartner && (
+            <DialogFooter className="flex flex-col gap-2 sm:flex-row sm:justify-between">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setIsDetailsOpen(false)}
+                className="w-full sm:w-auto"
+              >
+                Close
+              </Button>
+              <Button
+                type="button"
+                variant="destructive"
+                className="w-full sm:w-auto"
+                disabled={isRemoving}
+                onClick={() => handleRemovePartner(selectedPartner.id)}
+              >
+                {isRemoving ? "Removing..." : "Remove Partner"}
+              </Button>
+            </DialogFooter>
           )}
         </DialogContent>
       </Dialog>

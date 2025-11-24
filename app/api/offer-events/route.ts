@@ -49,8 +49,20 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Offer not found" }, { status: 404 })
     }
 
+    const { data: partner, error: partnerError } = await supabaseAdmin
+      .from("partners")
+      .select("partner_company_id")
+      .eq("id", offer.partner_id)
+      .single()
+
+    if (partnerError && partnerError?.code !== "PGRST116") {
+      console.error("Failed to load partner for event logging:", partnerError)
+    }
+
+    const companyIdForEvent = partner?.partner_company_id || offer.partner_id
+
     const { error: insertError } = await supabaseAdmin.from("offer_events").insert({
-      company_id: offer.partner_id,
+      company_id: companyIdForEvent,
       offer_id: offer.id,
       employee_id: employeeId,
       event_type: eventType,

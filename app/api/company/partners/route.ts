@@ -33,6 +33,7 @@ export async function GET() {
       .from("companies")
       .select(COMPANY_COLUMNS)
       .eq("status", "Active")
+      .neq("id", user.id)
       .order("name", { ascending: true })
 
     if (error) {
@@ -76,22 +77,51 @@ export async function POST(request: Request) {
   }
 
   try {
-    const { data: company, error: companyError } = await supabaseAdmin
-      .from("companies")
-      .select(COMPANY_COLUMNS)
-      .eq("id", body.companyId)
-      .single()
+    const [{ data: ownerCompany, error: ownerError }, { data: partnerCompany, error: partnerError }] =
+      await Promise.all([
+        supabaseAdmin
+          .from("companies")
+          .select(COMPANY_COLUMNS)
+          .eq("id", user.id)
+          .single(),
+        supabaseAdmin
+          .from("companies")
+          .select(COMPANY_COLUMNS)
+          .eq("id", body.companyId)
+          .single(),
+      ])
 
-    if (companyError || !company) {
+    if (ownerError || !ownerCompany) {
+      return NextResponse.json(
+        { error: "Unable to verify your company profile." },
+        { status: 400 },
+      )
+    }
+
+    if (ownerCompany.status !== "Active") {
+      return NextResponse.json(
+        { error: "Only approved companies can manage partners." },
+        { status: 400 },
+      )
+    }
+
+    if (partnerError || !partnerCompany) {
       return NextResponse.json(
         { error: "Selected company not found." },
         { status: 404 },
       )
     }
 
-    if (company.status !== "Active") {
+    if (partnerCompany.status !== "Active") {
       return NextResponse.json(
         { error: "Only approved companies can be added as partners." },
+        { status: 400 },
+      )
+    }
+
+    if (partnerCompany.id === ownerCompany.id) {
+      return NextResponse.json(
+        { error: "You cannot add your own company as a partner." },
         { status: 400 },
       )
     }
@@ -99,29 +129,31 @@ export async function POST(request: Request) {
     const { data: existing } = await supabaseAdmin
       .from("partners")
       .select("id")
-      .eq("company_id", company.id)
+      .eq("owner_company_id", ownerCompany.id)
+      .eq("partner_company_id", partnerCompany.id)
       .maybeSingle()
 
     if (existing) {
       return NextResponse.json(
-        { error: "This company is already a partner." },
+        { error: "This partnership already exists." },
         { status: 409 },
       )
     }
 
     const partnerData = {
-      company_id: company.id,
-      company_name: company.name ?? "",
-      business_type: company.industry ?? "General",
-      website: company.website ?? "",
+      owner_company_id: ownerCompany.id,
+      partner_company_id: partnerCompany.id,
+      company_name: partnerCompany.name ?? "",
+      business_type: partnerCompany.industry ?? "General",
+      website: partnerCompany.website ?? "",
       additional_note: "Imported from approved companies list",
-      email: company.contact_email ?? "",
-      phone: company.contact_phone ?? "",
-      address: company.address ?? "",
-      city: company.city ?? "",
-      state: company.state ?? "",
-      country: company.country ?? "",
-      pincode: company.postal_code ?? "",
+      email: partnerCompany.contact_email ?? "",
+      phone: partnerCompany.contact_phone ?? "",
+      address: partnerCompany.address ?? "",
+      city: partnerCompany.city ?? "",
+      state: partnerCompany.state ?? "",
+      country: partnerCompany.country ?? "",
+      pincode: partnerCompany.postal_code ?? "",
       employee_count: null,
       partnership_type: "Standard",
       image_url: null,

@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useMemo, useCallback } from "react"
 import { useRouter } from "next/navigation"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -25,7 +25,7 @@ import {
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
-import { supabase } from "@/lib/supabase"
+import { createClientComponentClient } from "@supabase/auth-helpers-nextjs"
 
 // Define types for our data structures
 interface PartnerCompany {
@@ -53,6 +53,7 @@ interface Partner {
 
 export default function CompanyDashboardPage() {
   const router = useRouter()
+  const supabase = useMemo(() => createClientComponentClient(), [])
   const [isAddOfferOpen, setIsAddOfferOpen] = useState(false)
   const [loading, setLoading] = useState(true)
   const [stats, setStats] = useState({
@@ -64,74 +65,127 @@ export default function CompanyDashboardPage() {
   const [offers, setOffers] = useState<Offer[]>([])
   const [topPartners, setTopPartners] = useState<Partner[]>([])
 
-  useEffect(() => {
-    fetchDashboardData()
-  }, [])
-
-  const fetchDashboardData = async () => {
+  const fetchDashboardData = useCallback(async (currentCompanyId: string) => {
     try {
       setLoading(true)
       
-      // Fetch all stats in parallel
-      const [
-        { count: employeeCount, error: employeeError },
-        { count: offerCount, error: offerError },
-        { count: partnerCount, error: partnerError },
-        { data: partnersData, error: partnersError },
-        { data: offersData, error: offersError },
-        { data: topPartnersData, error: topPartnersError }
-      ] = await Promise.all([
-        supabase.from('employees').select('*', { count: 'exact', head: true }),
-        supabase.from('offers').select('*', { count: 'exact', head: true }),
-        supabase.from('partners').select('*', { count: 'exact', head: true }),
-        supabase.from('partners').select('*').limit(5),
-        supabase.from('offers').select('*').limit(5),
-        supabase.from('partners').select('*').order('offers', { ascending: false }).limit(5)
-      ])
+      const { data: partnerRows, error: partnerListError } = await supabase
+        .from('partners')
+        .select('id, company_name, email, offers_count, status, created_at')
+        .eq('owner_company_id', currentCompanyId)
 
-      if (employeeError) console.error('Employee error:', employeeError)
-      if (offerError) console.error('Offer error:', offerError)
-      if (partnerError) console.error('Partner error:', partnerError)
+      if (partnerListError) {
+        console.error('Partner fetch error:', partnerListError)
+        setPartnerCompanies([])
+        setTopPartners([])
+        setStats((prev) => ({ ...prev, partnerCompanies: 0 }))
+        return
+      }
+
+      const partnerIds = (partnerRows || []).map((partner) => partner.id)
+
+      let offerCount = 0
+      let offersData: any[] | null = null
+
+      if (partnerIds.length > 0) {
+        const [
+          { count, error: offerError },
+          { data, error: offersError },
+        ] = await Promise.all([
+          supabase
+            .from('offers')
+            .select('*', { count: 'exact', head: true })
+            .in('partner_id', partnerIds),
+          supabase
+            .from('offers')
+            .select('*')
+            .in('partner_id', partnerIds)
+            .order('created_at', { ascending: false })
+            .limit(5),
+        ])
+
+        if (offerError) console.error('Offer error:', offerError)
+        if (offersError) console.error('Offers list error:', offersError)
+
+        offerCount = count || 0
+        offersData = data || null
+      }
 
       setStats({
-        totalEmployees: employeeCount || 0,
+        totalEmployees: 0,
         activeOffers: offerCount || 0,
-        partnerCompanies: partnerCount || 0
+        partnerCompanies: partnerRows?.length || 0,
       })
 
-      // Format partner companies data
-      if (partnersData) {
-        setPartnerCompanies(partnersData.map(partner => ({
+      if (partnerRows) {
+        setPartnerCompanies(
+          partnerRows.map((partner) => ({
           id: partner.id,
           name: partner.company_name || 'Unknown Company',
           email: partner.email || 'No email',
           offers: partner.offers_count || 0,
-          status: partner.status || 'Active'
-        })))
+            status: partner.status || 'Active',
+          })),
+        )
+        setTopPartners(partnerRows.slice(0, 5))
       }
 
-      // Format offers data
       if (offersData) {
-        setOffers(offersData.map(offer => ({
-          id: offer.id,
-          title: offer.title || 'Untitled Offer',
-          company: offer.partner_name || 'Unknown',
-          discount: offer.discount_type === 'Percentage' ? `${offer.discount_value}%` : `$${offer.discount_value}`,
-          validity: offer.end_date ? `${new Date(offer.end_date).toLocaleDateString()}` : '30 days',
-          status: offer.status || 'Active'
-        })))
-      }
-
-      // Set top partners
-      if (topPartnersData) {
-        setTopPartners(topPartnersData)
+        setOffers(
+          offersData.map((offer) => ({
+            id: offer.id,
+            title: offer.title || 'Untitled Offer',
+            company: offer.partner_name || 'Unknown',
+            discount:
+              offer.discount_type === 'Percentage'
+                ? `${offer.discount_value}%`
+                : `$${offer.discount_value}`,
+            validity: offer.end_date ? `${new Date(offer.end_date).toLocaleDateString()}` : '30 days',
+            status: offer.status || 'Active',
+          })),
+        )
       }
     } catch (error) {
       console.error('Dashboard error:', error)
     } finally {
       setLoading(false)
     }
-  }
+  }, [supabase])
+
+  useEffect(() => {
+    let isMounted = true
+    const init = async () => {
+      const {
+        data: { session },
+        error,
+      } = await supabase.auth.getSession()
+
+      if (error || !session) {
+        router.push("/auth/login")
+        return
+      }
+
+      if (!isMounted) return
+      fetchDashboardData(session.user.id)
+    }
+
+    init()
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (!session) {
+        router.push("/auth/login")
+        return
+      }
+      fetchDashboardData(session.user.id)
+    })
+
+    return () => {
+      isMounted = false
+      subscription.unsubscribe()
+    }
+  }, [fetchDashboardData, router, supabase])
 
   return (
     <DashboardLayout userType="company">

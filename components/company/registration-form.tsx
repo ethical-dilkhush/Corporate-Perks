@@ -10,8 +10,29 @@ import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, For
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { useToast } from "@/hooks/use-toast"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 
-const formSchema = z.object({
+export const COMPANY_INDUSTRY_OPTIONS = [
+  "IT / Technology",
+  "Finance & Banking",
+  "Healthcare & Life Sciences",
+  "Retail & E-commerce",
+  "Travel & Hospitality",
+  "Education",
+  "Manufacturing",
+  "Media & Entertainment",
+  "Real Estate & Construction",
+  "Logistics & Transportation",
+  "Other",
+]
+
+export const companyRegistrationSchema = z.object({
   // Company Information
   name: z.string().min(2, "Company name must be at least 2 characters"),
   industry: z.string().min(2, "Please select an industry"),
@@ -39,13 +60,15 @@ const formSchema = z.object({
   path: ["confirmPassword"],
 })
 
+export type CompanyRegistrationFormValues = z.infer<typeof companyRegistrationSchema>
+
 export function CompanyRegistrationForm() {
   const [isLoading, setIsLoading] = useState(false)
   const router = useRouter()
   const { toast } = useToast()
 
-  const form = useForm<z.infer<typeof formSchema>>({
-    resolver: zodResolver(formSchema),
+  const form = useForm<CompanyRegistrationFormValues>({
+    resolver: zodResolver(companyRegistrationSchema),
     defaultValues: {
       name: "",
       industry: "",
@@ -65,7 +88,7 @@ export function CompanyRegistrationForm() {
     },
   })
 
-  async function onSubmit(values: z.infer<typeof formSchema>) {
+  async function onSubmit(values: CompanyRegistrationFormValues) {
     setIsLoading(true)
 
     try {
@@ -132,9 +155,23 @@ export function CompanyRegistrationForm() {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel className="text-xs font-medium">Industry</FormLabel>
-                    <FormControl>
-                      <Input placeholder="Technology" {...field} />
-                    </FormControl>
+                    <Select onValueChange={field.onChange} value={field.value}>
+                      <FormControl>
+                        <SelectTrigger className="h-10">
+                          <SelectValue placeholder="Select industry" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {COMPANY_INDUSTRY_OPTIONS.map((option) => (
+                          <SelectItem key={option} value={option}>
+                            {option}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormDescription className="text-xs">
+                      Choose the category that best fits your business. Select "Other" if none apply.
+                    </FormDescription>
                     <FormMessage />
                   </FormItem>
                 )}

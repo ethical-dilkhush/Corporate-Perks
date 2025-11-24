@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -30,6 +30,14 @@ import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
 import { toast } from "sonner";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Separator } from "@/components/ui/separator"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
+import { COMPANY_INDUSTRY_OPTIONS } from "@/components/company/registration-form"
 
 interface Company {
   id: string;
@@ -37,7 +45,6 @@ interface Company {
   email: string;
   industry: string;
   location: string;
-  employees: number;
   revenue: number;
   offers: number;
   status: string;
@@ -63,60 +70,11 @@ interface RegistrationRequest {
   created_at: string;
 }
 
-// Mock data for company analytics
-const companyAnalytics = {
-  totalCompanies: 45,
-  activeCompanies: 38,
-  totalEmployees: 1250,
-  totalDeals: 320,
-}
-
-// Mock data for recent companies
-const recentCompanies: Company[] = [
-  {
-    id: "1",
-    name: "TechGadgets Inc.",
-    email: "contact@techgadgets.com",
-    industry: "Technology",
-    location: "San Francisco, CA",
-    employees: 150,
-    revenue: 2500000,
-    offers: 5,
-    status: "Active",
-    created_at: "2023-01-15"
-  },
-  {
-    id: "2",
-    name: "CloudSoft Solutions",
-    email: "info@cloudsoft.com",
-    industry: "Cloud Services",
-    location: "Austin, TX",
-    employees: 75,
-    revenue: 1200000,
-    offers: 3,
-    status: "Pending",
-    created_at: "2023-03-22"
-  },
-  {
-    id: "3",
-    name: "Green Energy Co.",
-    email: "hello@greenenergy.com",
-    industry: "Renewable Energy",
-    location: "Denver, CO",
-    employees: 200,
-    revenue: 3500000,
-    offers: 2,
-    status: "Active",
-    created_at: "2023-02-10"
-  }
-]
-
 interface CompanyForm {
   name: string;
   email: string;
   industry: string;
   location: string;
-  employees: string;
   revenue: string;
   offers: string;
   status: "Active" | "Pending";
@@ -221,7 +179,6 @@ export default function AdminCompaniesPage() {
     email: "",
     industry: "",
     location: "",
-    employees: "",
     revenue: "",
     offers: "",
     status: "Active"
@@ -301,6 +258,17 @@ export default function AdminCompaniesPage() {
   useEffect(() => {
     fetchRegistrationRequests();
   }, [fetchRegistrationRequests]);
+
+  const recentCompanies = useMemo(() => {
+    if (!companies.length) return []
+    return [...companies]
+      .sort(
+        (a, b) =>
+          new Date(b.created_at).getTime() -
+          new Date(a.created_at).getTime(),
+      )
+      .slice(0, 4)
+  }, [companies])
 
   const handleApproveRequest = async (requestId: string) => {
     try {
@@ -435,34 +403,8 @@ export default function AdminCompaniesPage() {
 
   const handleAddCompany = (e: React.FormEvent) => {
     e.preventDefault();
-    const newCompany: Company = {
-      id: companies.length + 1 + "",
-      name: form.name,
-      email: form.email,
-      industry: form.industry,
-      location: form.location,
-      employees: Number(form.employees),
-      revenue: Number(form.revenue),
-      offers: Number(form.offers),
-      status: form.status,
-      created_at: new Date().toISOString().split('T')[0]
-    };
-    setCompanies([...companies, newCompany]);
-    setForm({
-      name: "",
-      email: "",
-      industry: "",
-      location: "",
-      employees: "",
-      revenue: "",
-      offers: "",
-      status: "Active"
-    });
-    setSuccess(true);
-    setTimeout(() => {
-      setSuccess(false);
-      setShowAddModal(false);
-    }, 1200);
+    toast.warning("This modal is deprecated. Please use the Add Company button above.");
+    setShowAddModal(false);
   };
 
   const filteredCompanies = companies.filter((c) =>
@@ -554,24 +496,6 @@ export default function AdminCompaniesPage() {
                   <p className="text-2xl font-bold">{companies.filter(c => c.status === 'Active').length}</p>
                 </div>
               </div>
-              <div className="flex items-center space-x-4 p-4 border rounded-lg">
-                <div className="p-2 bg-purple-100 rounded-full">
-                  <Users className="h-6 w-6 text-purple-600" />
-                </div>
-                <div>
-                  <p className="text-sm text-muted-foreground">Total Employees</p>
-                  <p className="text-2xl font-bold">{companies.reduce((sum, c) => sum + c.employees, 0)}</p>
-                </div>
-              </div>
-              <div className="flex items-center space-x-4 p-4 border rounded-lg">
-                <div className="p-2 bg-orange-100 rounded-full">
-                  <Package className="h-6 w-6 text-orange-600" />
-                </div>
-                <div>
-                  <p className="text-sm text-muted-foreground">Total Deals</p>
-                  <p className="text-2xl font-bold">{companyAnalytics.totalDeals}</p>
-                </div>
-              </div>
             </CardContent>
           </Card>
 
@@ -581,27 +505,39 @@ export default function AdminCompaniesPage() {
               <CardDescription>Latest company additions</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              {recentCompanies.map((company) => (
-                <div key={company.id} className="flex items-center justify-between p-4 border rounded-lg">
-                  <div>
-                    <p className="font-medium">{company.name}</p>
-                    <div className="flex items-center space-x-4 text-sm text-muted-foreground">
-                      <span>{company.industry}</span>
-                      <span>{company.employees} employees</span>
+              {recentCompanies.length === 0 ? (
+                <p className="text-sm text-muted-foreground">
+                  No companies have been added yet.
+                </p>
+              ) : (
+                recentCompanies.map((company) => (
+                  <div
+                    key={company.id}
+                    className="flex items-center justify-between p-4 border rounded-lg"
+                  >
+                    <div>
+                      <p className="font-medium">{company.name}</p>
+                      <div className="flex flex-wrap items-center gap-4 text-sm text-muted-foreground">
+                        <span>{company.industry || "—"}</span>
+                        <span className="text-xs">
+                          Added {new Date(company.created_at).toLocaleDateString()}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <Badge
+                        variant={company.status === "Active" ? "default" : "secondary"}
+                      >
+                        {company.status}
+                      </Badge>
+                      <Button variant="ghost" size="sm" onClick={() => handleViewDetails(company)}>
+                        <Eye className="h-4 w-4" />
+                        <span className="sr-only">View details</span>
+                      </Button>
                     </div>
                   </div>
-                  <div className="flex items-center space-x-2">
-                    <Badge
-                      variant={company.status === "Active" ? "default" : "secondary"}
-                    >
-                      {company.status}
-                    </Badge>
-                    <Button variant="ghost" size="sm" onClick={() => handleViewDetails(company)}>
-                      View Details
-                    </Button>
-                  </div>
-                </div>
-              ))}
+                ))
+              )}
             </CardContent>
           </Card>
         </div>
@@ -629,10 +565,6 @@ export default function AdminCompaniesPage() {
                 <div>
                   <p className="text-sm text-muted-foreground">Status</p>
                   <p className="font-medium">{selectedCompany.status}</p>
-                </div>
-                <div>
-                  <p className="text-sm text-muted-foreground">Employees</p>
-                  <p className="font-medium">{selectedCompany.employees}</p>
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground">Revenue</p>
@@ -693,7 +625,6 @@ export default function AdminCompaniesPage() {
                     <TableHead>Status</TableHead>
                     <TableHead>Industry</TableHead>
                     <TableHead>Location</TableHead>
-                    <TableHead>Employees</TableHead>
                     <TableHead>Revenue</TableHead>
                     <TableHead>Offers</TableHead>
                     <TableHead>Created</TableHead>
@@ -718,9 +649,8 @@ export default function AdminCompaniesPage() {
                       </TableCell>
                       <TableCell>{company.industry}</TableCell>
                       <TableCell>{company.location}</TableCell>
-                      <TableCell>{formatNumber(company.employees)}</TableCell>
                       <TableCell>${formatNumber(company.revenue)}</TableCell>
-                      <TableCell>{company.offers}</TableCell>
+                    <TableCell>{company.offers}</TableCell>
                       <TableCell>{new Date(company.created_at).toLocaleDateString()}</TableCell>
                       <TableCell className="text-right">
                         <div className="flex justify-end space-x-2">
@@ -768,15 +698,25 @@ export default function AdminCompaniesPage() {
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="industry">Industry</Label>
-                  <Input id="industry" name="industry" value={form.industry} onChange={handleChange} required />
+                  <Select
+                    value={form.industry}
+                    onValueChange={(value) => setForm((prev) => ({ ...prev, industry: value }))}
+                  >
+                    <SelectTrigger id="industry" className="h-10">
+                      <SelectValue placeholder="Select industry" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {COMPANY_INDUSTRY_OPTIONS.map((option) => (
+                        <SelectItem key={option} value={option}>
+                          {option}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="location">Location</Label>
                   <Input id="location" name="location" value={form.location} onChange={handleChange} required />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="employees">Number of Employees</Label>
-                  <Input id="employees" name="employees" type="number" value={form.employees} onChange={handleChange} required />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="revenue">Annual Revenue</Label>
@@ -981,10 +921,6 @@ export default function AdminCompaniesPage() {
                 <div>
                   <h3 className="text-sm font-medium text-muted-foreground">Location</h3>
                   <p className="mt-1">{selectedCompany.location}</p>
-                </div>
-                <div>
-                  <h3 className="text-sm font-medium text-muted-foreground">Employees</h3>
-                  <p className="mt-1">{selectedCompany.employees}</p>
                 </div>
                 <div>
                   <h3 className="text-sm font-medium text-muted-foreground">Revenue</h3>

@@ -30,19 +30,35 @@ export async function GET() {
   try {
     const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString()
 
+    const { data: partnerRows, error: partnerListError } = await supabaseAdmin
+      .from("partners")
+      .select("id, partner_company_id")
+      .eq("owner_company_id", companyId)
+
+    if (partnerListError) throw partnerListError
+
+    const partnerIds = (partnerRows || []).map((partner) => partner.id)
+
+    let offersQuery = supabaseAdmin
+      .from("offers")
+      .select(
+        "id,title,category,status,start_date,end_date,redemptions,max_redemptions,partner_id,created_at",
+      )
+      .order("created_at", { ascending: false })
+
+    if (partnerIds.length > 0) {
+      offersQuery = offersQuery.in("partner_id", partnerIds)
+    } else {
+      offersQuery = offersQuery.eq("partner_id", companyId)
+    }
+
     const [
       { data: offersData, error: offersError },
       { data: employeesData, error: employeesError },
       { count: partnersCount = 0, error: partnersError },
       { data: eventsData, error: eventsError },
     ] = await Promise.all([
-      supabaseAdmin
-        .from("offers")
-        .select(
-          "id,title,category,status,start_date,end_date,redemptions,max_redemptions,partner_id,created_at",
-        )
-        .eq("partner_id", companyId)
-        .order("created_at", { ascending: false }),
+      offersQuery,
       supabaseAdmin
         .from("employees")
         .select("id,name,email,role,status,created_at")
@@ -50,7 +66,8 @@ export async function GET() {
         .order("created_at", { ascending: false }),
       supabaseAdmin
         .from("partners")
-        .select("id", { count: "exact", head: true }),
+        .select("id", { count: "exact", head: true })
+        .eq("owner_company_id", companyId),
       supabaseAdmin
         .from("offer_events")
         .select("event_type, offer_id, employee_id, created_at")
