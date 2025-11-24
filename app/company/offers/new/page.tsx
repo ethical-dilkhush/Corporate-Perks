@@ -1,13 +1,13 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useMemo, useCallback } from "react"
 import { useRouter } from "next/navigation"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useForm } from "react-hook-form"
 import * as z from "zod"
 import { Building2, ArrowLeft, Upload, Calendar, Tag, Percent, Info, Clock, FileText, Users, Image as ImageIcon, X } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
-import { supabase } from "@/lib/supabase"
+import { createClientComponentClient } from "@supabase/auth-helpers-nextjs"
 import Image from "next/image"
 
 import { Button } from "@/components/ui/button"
@@ -81,39 +81,72 @@ const discountTypes = [
 interface Partner {
   id: string
   company_name: string
+  partner_company_id: string | null
 }
 
 export default function NewOfferPage() {
   const router = useRouter()
   const { toast } = useToast()
+  const supabase = useMemo(() => createClientComponentClient(), [])
   const [isLoading, setIsLoading] = useState(false)
   const [success, setSuccess] = useState(false)
   const [errorMsg, setErrorMsg] = useState("")
   const [partners, setPartners] = useState<Partner[]>([])
+  const [isLoadingPartners, setIsLoadingPartners] = useState(true)
   const [selectedImage, setSelectedImage] = useState<File | null>(null)
   const [imagePreview, setImagePreview] = useState<string | null>(null)
+  const partnerOptions = useMemo(() => partners, [partners])
 
-  useEffect(() => {
-    fetchPartners()
-  }, [])
-
-  const fetchPartners = async () => {
+  const fetchPartners = useCallback(async () => {
+    setIsLoadingPartners(true)
     try {
+      const {
+        data: { session },
+        error: sessionError,
+      } = await supabase.auth.getSession()
+
+      if (sessionError) {
+        throw sessionError
+      }
+
+      if (!session) {
+        router.push("/auth/login")
+        toast({
+          title: "Session expired",
+          description: "Please log in again to create offers.",
+          variant: "destructive",
+        })
+        return
+      }
+
       const { data, error } = await supabase
         .from("partners")
-        .select("id, company_name")
-        .order("company_name")
+        .select("id, company_name, partner_company_id")
+        .eq("owner_company_id", session.user.id)
+        .order("company_name", { ascending: true })
 
       if (error) {
-        console.error("Error fetching partners:", error)
-        return
+        throw error
       }
 
       setPartners(data || [])
     } catch (error) {
-      console.error("Error:", error)
+      console.error("Error fetching partners:", error)
+      toast({
+        title: "Unable to load partners",
+        description:
+          error instanceof Error ? error.message : "Please refresh the page and try again.",
+        variant: "destructive",
+      })
+      setPartners([])
+    } finally {
+      setIsLoadingPartners(false)
     }
-  }
+  }, [router, supabase, toast])
+
+  useEffect(() => {
+    fetchPartners()
+  }, [fetchPartners])
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -332,23 +365,37 @@ export default function NewOfferPage() {
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>Select Partner</FormLabel>
-                          <Select 
-                            onValueChange={field.onChange} 
+                          <Select
+                            onValueChange={field.onChange}
                             value={field.value || ""}
+                            disabled={isLoadingPartners || partnerOptions.length === 0}
                           >
                             <FormControl>
                               <SelectTrigger className="h-11">
-                                <SelectValue placeholder="Select partner company" />
+                                <SelectValue
+                                  placeholder={
+                                    isLoadingPartners
+                                      ? "Loading partners..."
+                                      : partnerOptions.length === 0
+                                        ? "No approved partners available"
+                                        : "Select partner company"
+                                  }
+                                />
                               </SelectTrigger>
                             </FormControl>
                             <SelectContent>
-                              {partners.map((partner) => (
+                              {partnerOptions.map((partner) => (
                                 <SelectItem key={partner.id} value={partner.id}>
                                   {partner.company_name}
                                 </SelectItem>
                               ))}
                             </SelectContent>
                           </Select>
+                          {!isLoadingPartners && partnerOptions.length === 0 && (
+                            <p className="text-sm text-muted-foreground mt-2">
+                              Add a partner company before creating an offer.
+                            </p>
+                          )}
                           <FormMessage />
                         </FormItem>
                       )}

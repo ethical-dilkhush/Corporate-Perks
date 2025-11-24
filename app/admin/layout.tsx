@@ -6,7 +6,6 @@ import { usePathname } from "next/navigation"
 import {
   LayoutDashboard,
   Building2,
-  Users,
   Tag,
   Ticket,
   Bell,
@@ -75,11 +74,6 @@ const sidebarItems = [
     title: "Companies",
     href: "/admin/companies",
     icon: Building2,
-  },
-  {
-    title: "Employees",
-    href: "/admin/employees",
-    icon: Users,
   },
   {
     title: "Offers",
